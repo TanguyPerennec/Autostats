@@ -25,7 +25,7 @@ Les données proviennent de l'étude inca3, librement téléchargeables sur le <
 </p>
 
 ```{r datas}
-data("description_indiv_decode.rda")
+data("description_indiv_decode")
 DF <- description_indiv_decode[,3:40]
 head(DF)
 ```

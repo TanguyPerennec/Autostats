@@ -23,6 +23,7 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
    if(length(ynames) != length(levels(DF[,y]))) stop("ynames should be of as many labels than y levels")
    if(!is.logical(overall)) stop("'overall' should be a booleen")
    if(!is.logical(legend)) stop("'legend' should be a booleen")
+   if(!is.logical(legend)) stop("'title' should be a booleen")
    if(!is.numeric(mutation)) stop("'mutation' should be numeric")
 
 
@@ -32,6 +33,12 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
    tabf <- matrix(nrow = 1,ncol=levels_y+2)
    ligne <- c("",ynames,"")
    tabf <- ligne
+   ligne2 <- rep("",length(ligne))
+   for(k in 1:levels_y){
+      ligne2[k+1] <- paste0("N = ",table(DF[,y])[k])
+   }
+
+   tabf <- rbind(tabf,ligne2)
 
    for(var in DF[,2:length(DF)]){
 
@@ -48,14 +55,11 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
             sd_vars_level <- round(sd_vars[j,2],2)
             ligne <- c(ligne,paste0(mean_vars_level,"±",sd_vars_level))
          }
-         verif_level <- margin.table(table(var,DF[,y]),2) #verif prevents to have a table with 0 in a level
          verif <- TRUE
-         for(lev in verif_level){
-            if(lev == 0) verif <- FALSE
-         }
+         for(lev in margin.table(table(var,DF[,y]),2)){if(lev == 0) verif <- FALSE}#verif prevents to have a table with 0 in a level
          if(verif & !is.na(sd(var))){
             p <- signif(t.test(var~DF[,y])$p.value,3)
-         }else{clig <- NA}
+         }else{p <- "NA"}
 
          ligne <- c(ligne,p)
          tabf <- rbind(tabf,ligne)
@@ -89,13 +93,15 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
          }
          if(verif){
             condition_chi2 <- 0
+            condition_chi2_B <- TRUE
             for(m in tb){if(m < 5){#counting modalities under 5. if one > 3 and only 2 column we can apply yate's correction otherwise Fisher
                if(m < 3){
                   condition_chi2_B <- FALSE
                   break
                }else{condition_chi2 <- condition_chi2 + 1}
             }
-            condition_chi2_B <- ifelse(condition_chi2 < 2,TRUE,FALSE)
+            if(condition_chi2 > 1){condition_chi2_B <-FALSE}
+            if(condition_chi2 == 1 & length(levels(var)) > 2){condition_chi2_B <-FALSE}
             if(condition_chi2_B){
             clig <- chisq.test(var,DF[,y])$p.value                    # Chi2 test
             clig <- signif(clig,3)
@@ -146,8 +152,6 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
    if(title){
       title_text <- "Table 1. Patients baseline characteristics by study group"
    }else{title_text <- NULL}
-
-
 
    return(tabf)
 

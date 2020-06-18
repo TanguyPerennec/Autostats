@@ -4,7 +4,15 @@
 \alias{table1}
 \title{Table 1}
 \usage{
-table1(DF, y, ynames = NULL, overall = TRUE, mutation = 40)
+table1(
+  DF,
+  y,
+  ynames = NULL,
+  overall = TRUE,
+  mutation = 40,
+  legend = FALSE,
+  title = FALSE
+)
 }
 \arguments{
 \item{DF}{dataframe : datas}
