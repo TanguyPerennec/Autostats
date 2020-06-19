@@ -24,9 +24,13 @@ table1(
 \item{overall}{booleen (optionnal) : TRUE if an "overall" column is wanted}
 
 \item{mutation}{numeric : number of categories to display for one variable. If more than "mutation" categories, the categories after this threeshold are wrapped into a "others" categorie.}
+
+\item{legend}{booleen (optionnal) : TRUE if a legend is wanted under the table}
+
+\item{title}{booleen (optionnal) : TRUE if a title is wanted}
 }
 \value{
-results are in a matrix
+results are in a dataframe
 }
 \description{
 Table 1

@@ -7,3 +7,4 @@ DF <- description_indiv_decode
 y="sex_PS"
 tbf <- table1(DF,y="sex_PS")
 tbf
+

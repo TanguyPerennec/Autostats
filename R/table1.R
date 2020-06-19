@@ -5,18 +5,23 @@
 #' @param ynames vector of characters (optionnal) : names to be put in table one columns instead of y levels.
 #' @param overall booleen (optionnal) : TRUE if an "overall" column is wanted
 #' @param mutation numeric : number of categories to display for one variable. If more than "mutation" categories, the categories after this threeshold are wrapped into a "others" categorie.
+#' @param legend booleen (optionnal) : TRUE if a legend is wanted under the table
+#' @param title booleen (optionnal) : TRUE if a title is wanted
 #'
-#' @return results are in a matrix
+#' @return results are in a dataframe
 #' @export
 #' @import stringr
 #' @import stats
 #' @examples
 table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=FALSE){
-   # first transformations
+
+   ### first transformations ###
    DF <- as.data.frame(DF)
    DF[,y] <- as.factor(DF[[y]])
    if(is.null(ynames)) ynames <- levels(DF[,y])
-   # param verification
+   ###
+
+   ### param verification ###
    if(!is.data.frame(DF)) stop("datas must be a dataframe")
    if(!is.character(y) || !(y %in% colnames(DF))) stop("y must be a character variable, part of DF")
    if(!is.vector(ynames)) stop("ynames should be a vector of characters")
@@ -25,22 +30,23 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
    if(!is.logical(legend)) stop("'legend' should be a booleen")
    if(!is.logical(legend)) stop("'title' should be a booleen")
    if(!is.numeric(mutation)) stop("'mutation' should be numeric")
+   ###
 
-
-   # Paramètre de base
+   ### param setup ###
    i <- 1
    levels_y <- length(levels(DF[,y]))
    tabf <- matrix(nrow = 1,ncol=levels_y+2)
-   ligne <- c("",ynames,"")
-   tabf <- ligne
-   ligne2 <- rep("",length(ligne))
-   for(k in 1:levels_y){
-      ligne2[k+1] <- paste0("N = ",table(DF[,y])[k])
-   }
-
+   tabf <- c("characteristics",ynames,"p-value")
+   ligne2 <- rep("",levels_y+2)
+   for(k in 1:levels_y){ligne2[k+1] <- paste0("N = ",table(DF[,y])[k])} #number of observations for each levels of y
    tabf <- rbind(tabf,ligne2)
+   ###
 
-   for(var in DF[,2:length(DF)]){
+   ### loop for each characteristics (var) ###
+   y_index <- match(y,colnames(DF))
+   DF_without_y <- DF[,-y_index]
+
+   for(var in DF_without_y){
 
       i <- i + 1
       varname <- colnames(DF)[i]
@@ -57,13 +63,17 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
          }
          verif <- TRUE
          for(lev in margin.table(table(var,DF[,y]),2)){if(lev == 0) verif <- FALSE}#verif prevents to have a table with 0 in a level
-         if(verif & !is.na(sd(var))){
+         if(verif & sd(var,na.rm = T) != 0){
             p <- signif(t.test(var~DF[,y])$p.value,3)
-         }else{p <- "NA"}
+         }else{p <- "-"}
 
          ligne <- c(ligne,p)
          tabf <- rbind(tabf,ligne)
-      }else{#if non numeric
+
+      }
+
+
+      else{#if non numeric
          var <- stringr::str_to_lower(var)
          var <- stringr::str_replace(var, "é", "e")
          var <- stringr::str_replace(var, "è", "e")
@@ -94,12 +104,16 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
          if(verif){
             condition_chi2 <- 0
             condition_chi2_B <- TRUE
-            for(m in tb){if(m < 5){#counting modalities under 5. if one > 3 and only 2 column we can apply yate's correction otherwise Fisher
+            for(m in chisq.test(var,DF[,y],simulate.p.value = TRUE)$expected){
+               if(m < 5){#counting EXPECTED modalities under 5. if one > 3 and only 2 column we can apply yate's correction otherwise we apply Fisher
+                  condition_chi2_B <- FALSE
                if(m < 3){
                   condition_chi2_B <- FALSE
                   break
                }else{condition_chi2 <- condition_chi2 + 1}
+               }
             }
+
             if(condition_chi2 > 1){condition_chi2_B <-FALSE}
             if(condition_chi2 == 1 & length(levels(var)) > 2){condition_chi2_B <-FALSE}
             if(condition_chi2_B){
@@ -127,7 +141,7 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
             ligne <- c(ligne,paste0(clig,sign))
             tabf <- rbind(tabf,ligne) #ajout de la ligne au tableau
          }else{
-            ligne <- c(paste0(varname," - no. (%)"),rep(" ",levels_y),clig,paste0(clig,sign))
+            ligne <- c(paste0(varname," - no. (%)"),rep(" ",levels_y),paste0(clig,sign))
             tabf <- rbind(tabf,ligne)
             for (n in 1:length(levels(var))){ #Pour chaque niveau de la variable
                ligne <- paste0("        ",levels(var)[n])
@@ -142,18 +156,27 @@ table1 <- function(DF,y,ynames=NULL,overall=TRUE,mutation=40,legend=FALSE,title=
          }
       }
       }
-   }
    row.names(tabf) <- NULL
+   ###
+
+   ### dataframe transformation ###
+   as.data.frame(tabf) -> rslt
+   colnames(rslt) <- tabf[1,]
+   rslt <- rslt[-1,]
+   ###
 
    if(legend){
       text_legend <- "p-values are obtained with a Chi2 or Fisher exact test (‡) for categorical variables and by student test for continuous variables"
+      rslt$legend <- text_legend
    }else{text_legend <- NULL}
 
    if(title){
       title_text <- "Table 1. Patients baseline characteristics by study group"
+      rslt$title <- text_legend
    }else{title_text <- NULL}
 
-   return(tabf)
+
+   return(rslt)
 
 }
 
