@@ -5,6 +5,13 @@ source("R/table1.R")
 
 DF <- description_indiv_decode
 y="sex_PS"
+
+
 tbf <- table1(DF,y="sex_PS")
 tbf
 
+source("R/xlsx.R")
+xlsx(tbf,title_sheet=NULL,"rslts_table1")
+
+source("R/reglog.R")
+tbf <- reglog(DF,y="sex_PS")
