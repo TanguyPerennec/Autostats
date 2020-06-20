@@ -7,16 +7,16 @@
 reglog(DF, y, explicatives = colnames(DF)[colnames(DF) != y], alpha = 0.05)
 }
 \arguments{
-\item{y}{character : la variable a expliquer}
+\item{DF}{dataframe : dataframe with y and all explicative variables.}
 
-\item{explicatives}{character vector : variables a expliquer. Laisser vide pour prendre toute les valeurs du dataframe.}
+\item{y}{character : variable to explain.}
 
-\item{alpha}{num : seuil de significativite. Par défaut à 0,05.}
+\item{explicatives}{character vector : variables that should explain y with logistic regression. Take all columns but y from the dataframe if kept empty.}
 
-\item{datas}{dataframe :la table de donnée}
+\item{alpha}{num : significance threeshold.}
 }
 \value{
-rslt : une matrice de résultats
+rslt
 }
 \description{
 Regression logistique
