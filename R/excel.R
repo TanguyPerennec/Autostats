@@ -4,10 +4,10 @@
 #' @param title_sheet character : title of the sheet in the excel file
 #'
 #' @return
-#' @export
+#' @export excel
 #' @import xlsx
 #'
 #' @examples
-xlsx <- function(table,title_sheet=NULL,file_name){
+excel <- function(table,title_sheet=NULL,file_name){
    write.xlsx(table,"Results.xlsx",sheetName = title_sheet,append = FALSE,row.names = FALSE)
 }

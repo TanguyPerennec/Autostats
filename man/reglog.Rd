@@ -4,7 +4,14 @@
 \alias{reglog}
 \title{Regression logistique}
 \usage{
-reglog(DF, y, explicatives = colnames(DF)[colnames(DF) != y], alpha = 0.05)
+reglog(
+  DF,
+  y,
+  explicatives = colnames(DF)[colnames(DF) != y],
+  alpha = 0.05,
+  verbose = TRUE,
+  min_multivariate = 1
+)
 }
 \arguments{
 \item{DF}{dataframe : dataframe with y and all explicative variables.}
@@ -14,6 +21,8 @@ reglog(DF, y, explicatives = colnames(DF)[colnames(DF) != y], alpha = 0.05)
 \item{explicatives}{character vector : variables that should explain y with logistic regression. Take all columns but y from the dataframe if kept empty.}
 
 \item{alpha}{num : significance threeshold.}
+
+\item{verbose}{logical : TRUE for explaination in the console}
 }
 \value{
 rslt
