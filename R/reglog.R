@@ -223,12 +223,12 @@ reglog <- function(DF,
       DF_glm %>%
          select(y, var_uni) -> DF_uni
 
-      glm(DF_uni, family = binomial, data = DF_uni,epsilon = 1e-8, maxit = 100) -> mod_uni
+      glm(DF_uni, family = binomial, data = DF_uni) -> mod_uni
 
       #try to handle the "fitted probabilities numerically 0 or 1 occurred" warning message
       #####
       firth <- FALSE
-      if(TRUE %in% (abs(mod_uni$coefficients[-1]) > 10)){#checking if coefficient is above 10 or under -10
+      if(TRUE %in% (abs(mod_uni$coefficients[-1]) > 14)){#checking if coefficient is above 10 or under -10
          logistf::logistf(DF[,y]~DF[,var_uni], data = DF_uni, pl = TRUE, firth = TRUE) -> mod_uni
          firth <- TRUE
          vector_firth <- c(vector_firth,var_uni)
@@ -297,19 +297,23 @@ reglog <- function(DF,
       if(method == "forward"){
          rank(rslt[,4],ties.method = "first")-> ranking
          for (i in 1:(length(ranking)-1)){
-            names(ranking[match(i,ranking)]) -> new_var
+            names(ranking[match(i,ranking)]) -> new_var #new_var is the var with the minimum p-value
             rslt[match(new_var,rownames(rslt)),1] -> new_expl
-            str_split(new_expl," ")[[1]][1] -> new_expl
+            str_split(new_expl," ")[[1]][1] -> new_expl #corresponding variable
             if (!(new_expl %in% explicatives_multi)){#once a variable is the multivariate model it never leaves it
-            explicatives_multi <- c(explicatives_multi, new_expl)
-            cat("\n",rank,"...........",new_expl)
-            DF_glm %>%
-               select(y, all_of(explicatives_multi)) %>%
-               glm(., family = binomial, data = .) -> mod_multi
+               explicatives_multi <- c(explicatives_multi, new_expl)
+               cat("\n",i,"...........",new_expl)
+               DF_glm %>%
+                  select(y, all_of(explicatives_multi)) %>%
+                  glm(., family = binomial, data = .) -> mod_multi
             }
             match(new_var,rownames(summary(mod_multi)$coefficients)) -> match_summary
+            if(is.na(match_summary)){
+               message(new_var,' may has a linear relation to another variable. It has been deleted in the multivariate model')
+            }else{
             summary(mod_multi)$coefficients[match_summary,4] -> pval
             if(pval > alpha) explicatives_multi[explicatives_multi != new_expl] -> explicatives_multi
+            }
          }
       }
 
