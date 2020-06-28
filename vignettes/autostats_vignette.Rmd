@@ -34,5 +34,5 @@ Le jeu de donnée comprend les difficultés suivantes :
 - résultats uniques pour certaines variable
 - résultats unique après scindage pour certaines variables pour certaines variables (ex : femme et ménopause)
 ```{r tableau1}
-table1(DF,y="sex_PS")
+#table1(DF,y="sex_PS")
 ```

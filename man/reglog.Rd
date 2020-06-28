@@ -2,31 +2,48 @@
 % Please edit documentation in R/reglog.R
 \name{reglog}
 \alias{reglog}
-\title{Regression logistique}
+\title{Logistic Regression Function}
 \usage{
-reglog(
-  DF,
-  y,
-  explicatives = colnames(DF)[colnames(DF) != y],
-  alpha = 0.05,
-  verbose = TRUE,
-  min_multivariate = 1
-)
+reglog <- function(DF,y,explicatives,...)
 }
 \arguments{
-\item{DF}{dataframe : dataframe with y and all explicative variables.}
+\item{DF}{dataframe, matrix or tibble that contains all explicatives variables and the variable to explain.}
 
 \item{y}{character : variable to explain.}
 
-\item{explicatives}{character vector : variables that should explain y with logistic regression. Take all columns but y from the dataframe if kept empty.}
+\item{explicatives}{character vector : variables that should explain y in the logistic regression. Takes all columns but y from the dataframe if kept empty.}
 
-\item{alpha}{num : significance threeshold.}
+\item{alpha}{num : significance threeshold used to delete non-significant variables in the multivariate model.}
 
-\item{verbose}{logical : TRUE for explaination in the console}
+\item{verbose}{logical : if TRUE, explainations are displayed in the console while running the function.}
+
+\item{min_multivariate}{num : the minimum number of variables that should be kept in the multivariate model. If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.}
+
+\item{alpha_max}{num : maximum threeshold used to select the minimum multivariate variables wanted.}
+
+\item{round}{num : number of digits to display in the final table.}
+
+\item{method}{the method to be used to select variables in the multivariate model.The default method is the backward elimination. See details for more informations.}
+
+\item{...}{Other arguments that can be passed to reglog. See 'details' for more informations.}
 }
 \value{
-rslt
+reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model
 }
 \description{
-Regression logistique
+reglog is used to make logistic regression and gives one matrix with variables, odds-ratios, confidence intervals and p-values of univariate and multivariate models.
+}
+\details{
+Method used to select the variables in the multivariate model can be set it the "method" parameter.\
+"backward" elimination is the default technique : the least significant effect that does not meet the \
+level "alpha" for staying in the model is removed. The process is repeated until no other effect in the \
+model meets the specified level for removal. \n In "forward" selection, the p-value is computed for each effect \
+not in the model and examines the largest of these statistics. If it is significant at entry level "alpha", \
+the corresponding effect is added to the model.Once an effect is entered in the model, it is never removed \
+from the model. The process is repeated until none of the remaining effects meet the specified level for entry.
+
+{There is one fairly common circumstance in which both convergence problems and the Hauck-Donner phenomenon (and trouble with \sfn{step}) can occur. This is when the fitted probabilities are extremely close to zero or one. Consider a medical diagnosis problem with thousands of cases and around fifty binary explanatory variables (which may arise from coding fewer categorical factors); one of these indicators is rarely true but always indicates that the disease is present. Then the fitted probabilities of cases with that indicator should be one, which can only be achieved by taking \hat\beta_i = \infty. The result from \sfn{glm} will be warnings and an estimated coefficient of around +/- 10 \link{and an insignificant t value}.}
+}
+\references{
+Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17
 }
