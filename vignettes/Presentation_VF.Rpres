@@ -1,0 +1,61 @@
+Fonction Reglog
+========================================================
+author: Tanguy Perennec
+date: 09/07/2020
+autosize: true
+
+
+```{r setup, include=FALSE,cache=TRUE}
+knitr::opts_chunk$set(echo = FALSE)
+
+library(kableExtra)
+library(knitr)
+library(autostats)
+library(tidyverse)
+#library(safeBinaryRegression)
+source("../R/table1.R")
+source("../R/progressbar.R")
+```
+
+
+Fonction reglog
+========================================================
+
+```{r library autostats, echo=TRUE}
+library(autostats)
+?reglog
+```
+
+![](man.png)
+
+
+
+
+Dataset d'example
+========================================================
+
+```{r data importation, message=FALSE, warning=FALSE, include=FALSE}
+library(readr)
+DF <- read_delim("../data/thesepsyclean.csv",";", escape_double = FALSE, trim_ws = TRUE)[,-1]
+as.data.frame(DF) -> DF
+```
+
+<small>Thèse de psychiatrie dont l'objectif est la <strong>détermination de facteurs de récidive de tentative de suicide chez l'enfant</strong>.<br/><br/>
+Nombre de variables : <strong>`r length(DF) `</strong> ; nombre de patients : <strong>`r nrow(DF) `</strong></small>
+
+```{r viewDF, echo=FALSE, message=FALSE, warning=FALSE}
+library(kableExtra)
+library(knitr)
+DF %>%
+   kable() %>%
+   kable_styling(bootstrap_options = c("condensed","stripped","hover","responsive"), full_width = F,font_size = 11, fixed_thead = T) %>%
+   scroll_box(width = "100%",height = "50%")
+```
+
+
+Slide With Plot
+========================================================
+
+```{r, echo=FALSE}
+plot(cars)
+```

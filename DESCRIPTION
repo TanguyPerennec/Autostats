@@ -1,11 +1,14 @@
 Package: autostats
 Title: medical statistics with table 1, linear and logistic regressions
-Version: 0.0.1.11
+Version: 0.0.1.13
 Authors@R: 
     person(given = "Tanguy",
            family = "Perennec",
            role = c("aut", "cre"),
            email = "perennec.tanguy@gmail.com")
+        person(given = "Mathieu",
+           family = "Wargny",
+           role = c("aut"))
 Description: The package is able to performs basic statistics with a complete table 1. Logistic regression can be performed if a factor is provided. 
 License: GPL-3
 Encoding: UTF-8
@@ -23,4 +26,6 @@ Imports:
     dplyr,
     MASS,
     ROCR,
-    logistf
+    logistf,
+    here,
+    safeBinaryRegression

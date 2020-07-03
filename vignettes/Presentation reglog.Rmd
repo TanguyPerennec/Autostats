@@ -1,171 +1,3 @@
-#' Logistic Regression Function
-#'
-#' @description reglog is used to make logistic regression and gives one matrix with variables, odds-ratios, confidence intervals and p-values of univariate and multivariate models.
-#'
-#' @usage reglog <- function(DF,y,explicatives,...)
-#'
-#' @param DF dataframe, matrix or tibble that contains all explicatives variables and the variable to explain.
-#' @param y character : variable to explain.
-#' @param explicatives character vector : variables that should explain y in the logistic regression. Takes all columns but y from the dataframe if kept empty.
-#' @param method the method to be used to select variables in the multivariate model.The default method is the backward elimination. See details for more informations.
-#' @param ... Other arguments that can be passed to reglog. See 'details' for more informations.
-#'
-#' @details Method used to select the variables in the multivariate model can be set it the "method" parameter.
-#'  "backward" elimination is the default technique : the least significant effect that does not meet the
-#'  level "alpha" for staying in the model is removed. The process is repeated until no other effect in the
-#'  model meets the specified level for removal. \n In "forward" selection, the p-value is computed for each effect
-#'  not in the model and examines the largest of these statistics. If it is significant at entry level "alpha",
-#'  the corresponding effect is added to the model.Once an effect is entered in the model, it is never removed
-#'  from the model. The process is repeated until none of the remaining effects meet the specified level for entry.
-#'
-#' @param alpha num : significance threeshold used to delete non-significant variables in the multivariate model.
-#' @param verbose logical : if TRUE, explainations are displayed in the console while running the function.
-#' @param min_multivariate num : the minimum number of variables that should be kept in the multivariate model. If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.
-#' @param alpha_max num : maximum threeshold used to select the minimum multivariate variables wanted.
-#' @param method
-#' @param round num : number of digits to display in the final table.
-#'
-#' @details
-#' @details {There is one fairly common circumstance in which both convergence problems and the Hauck-Donner phenomenon (and trouble with \sfn{step}) can occur. This is when the fitted probabilities are extremely close to zero or one. Consider a medical diagnosis problem with thousands of cases and around fifty binary explanatory variables (which may arise from coding fewer categorical factors); one of these indicators is rarely true but always indicates that the disease is present. Then the fitted probabilities of cases with that indicator should be one, which can only be achieved by taking \hat\beta_i = \infty. The result from \sfn{glm} will be warnings and an estimated coefficient of around +/- 10 [and an insignificant t value].}
-#'
-#' @return reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model
-#' @export
-#' @import dplyr
-#' @import MASS
-#' @import logistf
-#' @import stringr
-#' @import safeBinaryRegression
-#' @importFrom autostats progressbar
-#'
-#' @references Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17
-#' @references Heinze G, Schemper M. A solution to the problem of separation in logistic regression. Stat Med. 2002;21(16):2409-2419. doi:10.1002/sim.1047
-#' @examples
-reglog <- function(DF,
-            y,
-            explicatives = colnames(DF)[colnames(DF) != y],
-            alpha = 0.05,
-            verbose = TRUE,
-            min_multivariate=2,
-            alpha_max=0.2,
-            round = 3,
-            method = "backward",
-            rowstimevariable = 10) {
-
-
-
-   #To ignore the warnings during usage
-   #options(warn=-1)
-   #options("getSymbols.warning4.0"=FALSE)
-
-
-
-
-   # Présentation ok
-   ##################################################
-   #    Arguments verification / transformation     #
-   ##################################################
-
-
-   if (is.data.frame(DF) || is.matrix(DF) || is.tbl(DF)){
-      DF <- as.data.frame(DF)
-   } else{
-      stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
-   }
-
-
-
-   if (!is.vector(explicatives))
-      stop("explicatives should be a vector of characters")
-
-   explicatives_out_DF <- explicatives[!(explicatives %in% colnames(DF))]
-   if(length(explicatives_out_DF) > 0){
-      msg_error <- explicatives_out_DF[1]
-      if(length(explicatives_out_DF) > 1){
-         for (expl_out_DF in explicatives_out_DF[-1]){
-            msg_error <- paste0(msg_error,", ",expl_out_DF)
-         }
-         msg_error <- paste0(msg_error," are not part of DF columns")
-      }else{
-         msg_error <- paste0(msg_error," is not part of DF columns")
-      }
-      stop(msg_error)
-   }
-
-
-
-
-
-   #
-   # y must be a character that leads to a Bernoulli variable (binary code, 1 as event, 0 as no event, no NA) in DF
-   # If not, it is coerce or stop
-   #
-
-
-   if (!is.character(y) ||!(y %in% colnames(DF)))
-      stop("y must be a character variable, part of DF")
-
-
-
-   if (y %in% explicatives) {#if y is in 'explicatives' it is deleted
-      message('y is part of "explicatives" and is removed from it')
-      explicatives[-match(y, explicatives)]
-   }
-
-
-
-   DF <- DF[!is.na(DF[, y]), ] # we remove all NA in DF$y
-
-
-
-   # Re-encoding Y
-   levels_y <- levels(as.factor(DF[, y])) #we get the levels of y (that should be 0 or 1)
-   if (length(levels_y) != 2)
-      stop("y should be a factor with 2 levels")
-   if (FALSE %in% (levels_y %in% c(0,1))){
-      DF[, y] <- as.character(DF[, y]) # prevents errors if DF[,y] is a factor
-      stringr::str_detect(levels_y, "non") -> non_position
-      stringr::str_detect(levels_y, "no ") -> no_position
-      stringr::str_detect(levels_y, "not ") -> not_position
-      if(non_position || no_position || not_position){#if there is a level with "no " or "non" or "not " in it, it will be the 0 level
-         if(!is.na(match(TRUE,non_position))) match(TRUE,non_position) -> level_non
-         if(!is.na(match(TRUE,no_position))) match(TRUE,no_position) -> level_non
-         if(!is.na(match(TRUE,not_position))) match(TRUE,not_position) -> level_non
-            DF[, y][DF[, y] == levels_y[level_non]] <- 0
-            DF[, y][DF[, y] != 0] <- 1
-         }else{#else it will be the first that will be 0
-            DF[, y][DF[, y] == levels_y[1]] <- 0
-            DF[, y][DF[, y] == levels_y[2]] <- 1
-         }
-   if(verbose)
-      cat('\ny has been changed to 0/1 factor with ',levels_y[1],' = 0 and ',levels_y[2],' = 1')
-   }
-   DF[, y] <- as.factor(DF[, y])
-
-
-   #
-   # Other params
-   #
-
-   if (!is.logical(verbose))
-      stop("'verbose' must be logical")
-
-
-   if (!is.numeric(min_multivariate))
-      stop("min_multivariate must be numeric")
-
-
-   if (!is.numeric(round) || round <= 0)
-      stop("round must be numeric and positive")
-
-
-   if (!(method %in% c("backward","forward","stepwise","PS")))
-      stop("'method' should be one of this methods : backward, forward, stepwise, PS")
-
-   if(!is.logical(confirmation))
-      stop("'confirmation' must be logical")
-
-
-   ##################################################
 
 
 
@@ -174,16 +6,91 @@ reglog <- function(DF,
 
 
 
-   ##################################################
-   #               1) DATA CLEANING                 #
-   ##################################################
-   if (verbose) cat(
-         "\n\n+-----------------------------+\n",
-         "  1) DATA CLEANING :",
-         "\n+-----------------------------+\n")
 
 
-   # 1.1 Clean constant variables
+
+
+
+
+
+
+
+### Exemple1
+Sous ensemble d'un dataframe.<br>
+Extraction des hommes avec maintient d'une colonne ménopause :
+
+```{r exemple1 hors fonction}
+menopause=c(rep(0,10),sample(c(0,1),10,replace=T))
+sexe=c(rep("homme",10),rep("femme",10))
+sexe_homme <- sexe[sexe == "homme"]
+menopause2 <- menopause[sexe == "homme"]
+table(menopause2,sexe_homme)
+```
+```{r exemple1a hors fonction, echo=TRUE}
+try(glm(menopause2~sexe_homme,family = "binomial"))
+```
+
+### Exemple2
+Ne pas manquer des "NA" informatifs :<br>
+Population imaginaire de patients atteints d'un cancer ORL avant chirurgie
+```{r exemple2 hors fonction, eval=FALSE, include=FALSE}
+set.seed(23)
+nombre = 30
+denutrition = c(rep(NA,nombre),rep(0,round(nombre/2,0)),rep(1,round(nombre/2,0)))
+SNG = c(sample(c(0,1,1),round(nombre/2,0),replace = T),rep(1,round(nombre/2,0)),sample(c(0,0,1),round(nombre/2,0),replace = T),sample(c(0,1),round(nombre/2,0),replace = T))
+consultation_nutritionnelle = c(rep(0,nombre),rep(1,nombre))
+as.data.frame(cbind(SNG,denutrition)) -> DF_exemple2a
+
+DF_exemple2a %>%
+   kable() %>%
+   kable_styling(bootstrap_options = c("condensed","stripped","hover","responsive"), full_width = F,font_size = 11, fixed_thead = T) %>%
+   scroll_box(width = "100%",height = "50%")
+```
+
+```{r eval=FALSE, include=FALSE}
+DF_exemple2a <- DF_exemple2a[complete.cases(DF_exemple2a),]
+as.factor(DF_exemple2a$denutrition) -> DF_exemple2a$denutrition
+as.factor(DF_exemple2a$SNG) -> DF_exemple2a$SNG
+as.data.frame(DF_exemple2a) -> DF_exemple2a
+try(OR <- exp(summary(glm(SNG~denutrition,data=DF_exemple2a,family = "binomial"))$coefficients[2,1]))
+try(p <- summary(glm(SNG~denutrition,data=DF_exemple2a,family = "binomial"))$coefficients[2,4])
+try(cat("OR = ",round(OR,2)," |  p = ",p))
+```
+
+La dénutrition n'est pas très informative... <br>
+Que se passe-t-il si "NA" est considéré comme une information (NA = non recueilli) ?
+
+```{r eval=FALSE, include=FALSE}
+denutrition[is.na(denutrition)] <- "Non recueilli"
+
+as.data.frame(cbind(SNG,denutrition)) -> DF_exemple2a
+as.factor(DF_exemple2a$denutrition) -> DF_exemple2a$denutrition
+as.factor(DF_exemple2a$SNG) -> DF_exemple2a$SNG
+DF_exemple2a
+OR <- exp(summary(glm(SNG~denutrition,data=DF_exemple2a,family = "binomial"))$coefficients[2,1])
+p <- summary(glm(SNG~denutrition,data=DF_exemple2a,family = "binomial"))$coefficients[2,4]
+cat("OR = ",round(OR,2)," |  p = ",p)
+```
+
+L'information cachée derrière les NA
+
+```{r}
+as.data.frame(cbind(SNG,denutrition,consultation_nutritionnelle)) -> DF_exemple2a
+DF_exemple2a %>%
+   kable() %>%
+   kable_styling(bootstrap_options = c("condensed","stripped","hover","responsive"), full_width = F,font_size = 11, fixed_thead = T) %>%
+   scroll_box(width = "100%",height = "50%")
+```
+
+comment le traiter dans la fonction ?
+
+```{r echo=TRUE}
+
+```
+
+
+```{r clean constant variables, echo=TRUE}
+ # 1.1 Clean constant variables
    ######
    explicatives_1 <- explicatives
 
@@ -192,57 +99,94 @@ reglog <- function(DF,
       # if numeric variable is constant or if factor as only one level
       # and then deleate it if so
       var <- explicatives[var_i]
+
+
       if (is.numeric(DF[,var])) {
+         
          as.factor(DF[,var]) -> DF[,var]
+         
          if (length(levels(DF[, var])) < 2) {#removes factor with only one level
-            if (verbose) message("\n", var, " is constant and is deleted")
+            if (verbose) 
+               message("\n", var, " is constant and is deleted")
             explicatives <- explicatives[-var_i]
          }
+         
          rep <- "N"
          if (length(levels(DF[, var])) < 7) {
-            message("\n", var, " is a numeric variable with only",length(levels(DF[, var]))," different values and could be considered as a factor")
-            if(confirmation){
-               rep <- readline(paste0("Change",var,"into factor ? O/N"))
-            }else{rep <- "O"}
-            if(rep != 'O')as.numeric(DF[,var])
+               message("\n", var, " is a numeric variable with only",length(levels(DF[, var]))," different values and could be considered as a factor")
+               if(confirmation){
+                  rep <- readline(paste0("Change",var,"into factor ? O/N"))
+               }else{
+                  rep <- "O"
+               }
+         }
+         
+         if(rep != 'O'){
+            as.numeric(DF[,var])
          }
       }else{
          #convert each non numeric into a factor and check whether they have one level or not
          as.factor(DF[,var]) -> DF[,var]
          if (length(levels(DF[, var])) < 2) {
             #removes factor with only one level
-            if (verbose)
+            if (verbose) 
                message("\n", var, " has only one level and is deleted")
             explicatives <- explicatives[-var_i]
-         }else{}
+         }else{
+            # check if each level has values for each level of y
+            #for (lev in table(DF[, var], DF[, y])) {
+            #   if (lev == 0) {
+            #      stop()
+             #     message("\n", var, " is a constant value and is deleted")
+              #    explicatives <- explicatives[-var_i]
+              # }
+         #   }
+         }
       }
    }
+
    ######
+```
 
-   #---------------------------LIMITE DE CLEANANCE ------------------------------#
+Les derniers commentaires correspondants à une séparation complète de variable ne sont pas appliquées car gérées désormais différemment.<br><br>
+<br>
 
+##  1.2 Deleting row with NAs
 
-   # 1.2 Deleting row with NA in it
+On ne conserve que les lignes "complètes" (sans NA) pour conserver toujours la même population d'étude dans les différents modèles univariés et avec le modèle multivarié.
+
+```{r delinting NA, echo=TRUE}
+    # 1.3 Deleting row with NA in it
    ######
    DF_glm <- subset.data.frame(DF, select = c(y, explicatives))
    DF_complete <- DF_glm[complete.cases(DF_glm),]
 
-   if (verbose)
-      cat("\nDropping all rows with NA in an explicative variable...")
-      cat("\n",(nrow(DF_glm) - nrow(DF_complete))," rows deleted (",round(100*(nrow(DF_glm) - nrow(DF_complete))/(nrow(DF_glm)),0),"%)")
-
-
-   if (verbose & (nrow(DF_complete) < rowstimevariable * length(DF_complete))) {
+   if (verbose) 
+      cat("\nDropping all rows with NA in an explicative variable...\n",
+          (nrow(DF_glm) - nrow(DF_complete))," rows deleted (",round(100*(nrow(DF_glm) - nrow(DF_complete))/(nrow(DF_glm)),0),"%)") 
+   
+```
+   <br><br><br><br>
+**Problème** : si il y a beaucoup de NA, risque de supprimer trop de colonnes et de ne pas en laisser assez pour l'analyse.</br>
+"Pas assez de colonnes" est souvent considéré comme < 10 x variables explicatives restantes.<br><br>
+**Solution** : supprimer une à une les colonnes avec le plus de NA<br><br><br>
+**Risque** : supprimer des colonnes informatives, bien que pleines de NA<br><br><br>
+**Piste** : methodes "pas à pas" préliminaire : construire n modèles de regression logistique univariées pour les n variables et supprimer les variables non significatives (quel seuil ? interactions ?) alors qu'elles ont toutes le maximum d'observations possibles.
+   
+```{r}
+if (verbose & (nrow(DF_complete) < rowstimevariable * length(DF_complete))) {
       cat("\n\nDropping all the rows with a NA in explicative variables drove to drop too many rows.")
       cat("\nColumns are deleted one by one from the column with the most NAs to the column with the less NA,
-          till the new dataframe has as many rows as 10 times the number of variables remaining\n\n")
+          till the new dataframe has as many rows as ~10 times the number of variables remaining\n\n")
    }
+
 
    i = 0
    deleted_columns <- vector()
    nb_NA <- apply(DF_glm[, explicatives], 2, function(x) sum(is.na(x))) #nb of deleted NA by columns
    nb_NA <- nb_NA[order(-nb_NA)]
 
+   
    while (nrow(DF_complete) < rowstimevariable * length(DF_complete)) {
       #if dropping all the rows with NA dropped more than "rowstimevariable" time the number of variables, we remove the line with the most NA
       i <- i + 1
@@ -257,8 +201,12 @@ reglog <- function(DF,
    DF_glm <- DF_complete
 
    if (verbose) cat("\n\n\nDeleted columns are :", deleted_columns)
+```
 
-   for (name in explicatives) { #cleaning variables with only one level
+
+
+```{r echo=FALSE}
+for (name in explicatives) { #cleaning new variables with only one level
       for (n_by_level in table(DF_glm[, name])) {
          if (n_by_level == 0) {
             if (verbose) message("\nSince NA cleaning, ",name,"has only one level and is deleted")
@@ -270,13 +218,15 @@ reglog <- function(DF,
 
    DF_glm <- subset.data.frame(DF_glm, select = c(y, explicatives))
 
-   if (verbose) cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
-         "\n\n+----------------------------------------+\n
-         It remains ",length(explicatives),"variables and ",nrow(DF_glm),"observations",
-         "\n\n##################################################\n")
-   ##################################################
+   if (verbose) 
+      cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
+         "\n\n+----------------------------------------+\n")
+   ######
+```
 
 
+
+```{r include=FALSE}
    # Constructing 'vect_explicative'
    #####
    vect_explicative <- vector()
@@ -292,9 +242,11 @@ reglog <- function(DF,
       }
    }
    #####
+```
 
+# Modele univarié
 
-
+```{r univariate model}
    ##################################################
    #               UNIVARIATE MODEL                 #
    ##################################################
@@ -302,15 +254,24 @@ reglog <- function(DF,
       "\n\n+-----------------------------+\n",
       "  2) UNIVARIATE MODEL :",
       "\n+-----------------------------+\n\n")
+```
 
+```{r matrice de resulat, include=FALSE}
    rslt <- matrix("-", nrow = (length(vect_explicative) + 1), ncol = 7)
    rownames(rslt) <- rep(" ",(length(vect_explicative) + 1))
    rslt[1, ] <- c("", "OR", "IC", "p", "OR", "IC", "p")
    i = 0
    vector_var = vector()
    vector_firth <- vector()
-   var_i = 0
    dev_matrix <- matrix(ncol = 2,nrow=length(explicatives))
+   var_i=0
+
+```
+
+Pour toute variable explicative, calcul d'un modèle de regression logistique univarié et enregistrement de la déviance (utile pour la sélection de variable dans le modèle multivarié).<br><br>
+La séparation complète est actuellement gérée par la méthode de Firth.<br><br>
+
+```{r modèle univarié, echo=TRUE}
 
    for (var_uni in explicatives) {
       progressbar(total = length(vect_explicative),i,variable = var_uni)
@@ -318,8 +279,8 @@ reglog <- function(DF,
       DF_glm %>%
          select(y, var_uni) -> DF_uni
 
-      complete_separation <- FALSE
-      complete_separation <- tryCatch(glm(DF_uni, family = binomial, data = DF_uni,separation="find") -> mod_uni,
+      firth <- FALSE
+      firth <- tryCatch(glm(DF_uni, family = "binomial", data = DF_uni,separation="find") -> mod_uni,
                error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
                   msg <- paste0(var_uni," is causing perfect separation")
                   msg
@@ -328,8 +289,8 @@ reglog <- function(DF,
                },
                finally={}
                )
-      complete_separation -> firth
-      Clogg = FALSE
+      firth -> complete_separation
+      Clogg <- FALSE
 
       if(complete_separation){
       # If there is a perfect separation : (Heinz et Al)
@@ -375,7 +336,8 @@ reglog <- function(DF,
       }
 
 
-      #saving deviances for each model
+
+      #saving deviances for each univariate model
       var_i <- var_i+1
       var_uni -> dev_matrix[var_i,1]
       if(firth){
@@ -428,12 +390,35 @@ reglog <- function(DF,
       }
       if (verbose) cat("\nThe Firth's Bias-Reduced Logistic Regression has been used to compute these variables")
    }
+```
 
 
 
+```{r echo=FALSE}
+#############
+#hors fonction
+rslt_1 <- rslt[,1:4]
+rownames(rslt_1) <- NULL
+rslt_1 
+```
 
+## Résultats "présentables"
 
+```{r echo=FALSE}
 
+rslt_1 %>%
+   kable() %>%
+   kable_styling(bootstrap_options = c("condensed","stripped","hover","responsive"), full_width = F,font_size = 11,fixed_thead = T) %>%
+   scroll_box(width = "90%",height = '90%')
+```
+
+A améliorer :<br>
+- possibilité de mettre une ligne "référence" entre chaque variable (ex ligne 1 : "femme","1","-","-")<br>
+- ?
+
+# Modèle multivarié
+
+```{r echo=TRUE}
    ##################################################
    #               MULTIVARIATE MODEL               #
    ##################################################
@@ -479,8 +464,8 @@ reglog <- function(DF,
          firth <- FALSE
          firth <- tryCatch(glm(formule,data = DF_glm,family=binomial,separation="find") -> model1,
                            error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
-                              msg <- paste0(var_uni," is causing perfect separation")
-                              msg
+                              #msg <- paste0(var_uni," is causing perfect separation")
+                              #msg
                               firth <- TRUE
                               return(firth)
                            },
@@ -517,8 +502,8 @@ reglog <- function(DF,
             firth <- FALSE
             firth <- tryCatch(glm(formule2,data = DF_glm,family=binomial,separation="find") -> model2,
                               error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
-                                 msg <- paste0(var_uni," is causing perfect separation")
-                                 msg
+                                 #msg <- paste0(var_uni," is causing perfect separation")
+                                 #msg
                                  firth <- TRUE
                                  return(firth)
                               },
@@ -570,10 +555,18 @@ reglog <- function(DF,
             explicatives_multi[explicatives_multi != expl_to_delete] -> explicatives_multi
          }
       }
-
-      DF_glm %>%
-         select(y, all_of(explicatives_multi)) %>%
-         glm(., family = binomial, data = .) -> mod_multi
+      ###########      ###########      ###########      ###########      ###########      ###########
+      firth <- FALSE
+      firth <- tryCatch(glm(DF_glm,family=binomial,separation="find") -> mod_multi,
+                              error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
+                                 #msg <- paste0(var_uni," is causing perfect separation")
+                                 #msg
+                                 firth <- TRUE
+                                 return(firth)
+                              },
+                              finally={}
+            )
+      if(firth) logistf::logistf(DF_glm, pl = FALSE, firth = TRUE) -> mod_multi
       }
 
 
@@ -720,7 +713,10 @@ reglog <- function(DF,
 
             }
    ##################################################
+```
 
+
+```{r echo=TRUE}
 
    ##################################################
    #              MATRICE DE RÉSULTATS              #
@@ -747,5 +743,8 @@ reglog <- function(DF,
    ##################################################
 
       row.names(rslt) <- NULL
-      return(rslt)
-}
+      #return(rslt)
+
+
+rslt
+```

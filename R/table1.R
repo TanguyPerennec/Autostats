@@ -22,7 +22,6 @@ table1 <-
             legend = FALSE,
             title = FALSE) {
 
-      source("R/progressbar.R")
 
       ##################################################
       #    Arguments verification / transformation     #
