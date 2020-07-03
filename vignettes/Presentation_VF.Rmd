@@ -1,10 +1,8 @@
 ---
-title: "Presentation_VF"
+title: "Fonction Reglog"
 author: "Tanguy Perennec"
 date: "7/3/2020"
-output: 
-   slidy_presentation:
-    highlight: "tango"
+output: slidy_presentation
     
 ---
 
@@ -42,6 +40,7 @@ DF <- read_delim("../data/thesepsyclean.csv",";", escape_double = FALSE, trim_ws
 Nombre de variables : **`r length(DF) `** ; nombre de patients : **`r nrow(DF) `**</p>
 
 ```{r viewDF, message=FALSE, warning=FALSE}
+opts_chunk$set( fig.align='center')
 DF %>%
    kable() %>%
    kable_styling(bootstrap_options = c("condensed","stripped","hover","responsive"), full_width = F,font_size = 11, fixed_thead = T) %>%
@@ -235,7 +234,7 @@ Pour la suite, si verbose = TRUE, des informations sont présentées dans la con
 
 ##  1.1 Clean constant variables
 
-Les variables constantes (SD = 0 si numérique, 1 seul niveau si facteur) sont supprimées car non discriminantes.<br/>
+Les variables constantes (1 seul niveau si facteur) sont supprimées.<br/>
 
 ```{r echo=TRUE}
 
@@ -276,3 +275,26 @@ Les variables constantes (SD = 0 si numérique, 1 seul niveau si facteur) sont s
    ######
 ```
 
+
+
+##  1.2 Deleting row with NAs
+
+On ne conserve que les lignes "complètes" (sans NA) pour conserver toujours la même population d'étude dans les différents modèles univariés et avec le modèle multivarié.
+
+```{r delinting NA, echo=TRUE}
+    # 1.3 Deleting row with NA in it
+   ######
+   DF_glm <- subset.data.frame(DF, select = c(y, explicatives))
+   DF_complete <- DF_glm[complete.cases(DF_glm),]
+
+   if (verbose) 
+      cat("\nDropping all rows with NA in an explicative variable...\n",
+          (nrow(DF_glm) - nrow(DF_complete))," rows deleted (",round(100*(nrow(DF_glm) - nrow(DF_complete))/(nrow(DF_glm)),0),"%)","...........",nrow(DF_complete),"rows remaining") 
+   
+```
+   <br><br><br><br>
+**Problème** : si il y a beaucoup de NA, risque de supprimer trop de lignes et de ne pas en laisser assez pour l'analyse.</br>
+"Pas assez d'observations" est souvent considéré comme < 10 x variables explicatives restantes.<br><br>
+**Solution** : supprimer une à une les colonnes avec le plus de NA<br><br><br>
+**Risque** : supprimer des colonnes informatives, bien que pleines de NA<br><br><br>
+**Piste** : methodes "pas à pas" préliminaire : construire n modèles de regression logistique univariées pour les n variables et supprimer les variables non significatives (quel seuil ? interactions ?) alors qu'elles ont toutes le maximum d'observations possibles.

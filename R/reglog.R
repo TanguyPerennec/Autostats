@@ -60,6 +60,8 @@ reglog <- function(DF,
 
 
 
+
+
    # Présentation ok
    ##################################################
    #    Arguments verification / transformation     #
@@ -219,7 +221,6 @@ reglog <- function(DF,
    }
    ######
 
-   #---------------------------LIMITE DE CLEANANCE ------------------------------#
 
 
    # 1.2 Deleting row with NA in it
@@ -229,7 +230,20 @@ reglog <- function(DF,
 
    if (verbose)
       cat("\nDropping all rows with NA in an explicative variable...")
-      cat("\n",(nrow(DF_glm) - nrow(DF_complete))," rows deleted (",round(100*(nrow(DF_glm) - nrow(DF_complete))/(nrow(DF_glm)),0),"%)")
+      cat("\n",(nrow(DF_glm) - nrow(DF_complete))," rows deleted (",round(100*(nrow(DF_glm) - nrow(DF_complete))/(nrow(DF_glm)),0),"%)","...........",nrow(DF_complete),"rows remaining")
+
+
+
+
+
+      ############   ############   ############   ############   ############   ############
+      #---------------------------LIMITE DE CLEANANCE ------------------------------#
+      ############   ############   ############   ############   ############   ############
+
+
+
+
+
 
 
    if (verbose & (nrow(DF_complete) < rowstimevariable * length(DF_complete))) {
