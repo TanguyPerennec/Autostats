@@ -1,27 +1,41 @@
-
 #' Function Logit
 #'
 #' @param DF a dataframe
-#' @param y a variable to explain by logit function
+#' @param y (optional) a variable to explain by logit function. If kept empty, y is the first element of DF.
 #'
 #' @return
 #' @export
+#' @import formulation
 #'
 #' @examples
 logit <- function(DF,y=colnames(DF)[1]){
 
+   source("R/formulation.R")
+   source("R/dataprep.R")
+
+   # 1) Getting the elements
+   ##################################################
+   formule <- formulation(DF,y)
+   #####
+
+
+   # 2) Verify conditions and transformation
+   ##################################################
+   if(!is.factor(DF[,y])){
+      DF <- as.data.frame(DF)
+      DF[,y] <- tobinary(DF[,y])
+   }
+   #####
+
+
+   # 3) Regression
+   ##################################################
+   model <- glm(formule, data = DF,family = "binomial")
+   #####
+
+
+   return(model)
 }
 
 
-explicatives <- colnames(DF)
-if(y %in% explicatives)
-   explicatives[-y]
 
-explicatives = "caca"
-
-formule <- paste0(y,"~",explicatives[1])
-for(explicative in explicatives[-1]){
-   formule <- paste0(formule,"+",explicative)
-}
-
-formule()

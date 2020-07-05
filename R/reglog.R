@@ -41,15 +41,16 @@
 #' @references Heinze G, Schemper M. A solution to the problem of separation in logistic regression. Stat Med. 2002;21(16):2409-2419. doi:10.1002/sim.1047
 #' @examples
 reglog <- function(DF,
-            y,
-            explicatives = colnames(DF)[colnames(DF) != y],
-            alpha = 0.05,
-            verbose = TRUE,
-            min_multivariate=2,
-            alpha_max=0.2,
-            round = 3,
-            method = "backward",
-            rowstimevariable = 10) {
+                  y,
+                  explicatives = colnames(DF)[colnames(DF) != y],
+                  alpha = 0.05,
+                  verbose = TRUE,
+                  min_multivariate=2,
+                  alpha_max=0.2,
+                  round = 3,
+                  method = "backward",
+                  rowstimevariable = 10,
+                  confirmation = TRUE) {
 
 
 
@@ -59,26 +60,19 @@ reglog <- function(DF,
 
 
 
-
-
-
-   # Présentation ok
    ##################################################
    #    Arguments verification / transformation     #
    ##################################################
 
-
    if (is.data.frame(DF) || is.matrix(DF) || is.tbl(DF)){
       DF <- as.data.frame(DF)
-   } else{
-      stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
-   }
-
+   } else{stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")}
 
 
    if (!is.vector(explicatives))
       stop("explicatives should be a vector of characters")
 
+   #Removes explicatives not in DF
    explicatives_out_DF <- explicatives[!(explicatives %in% colnames(DF))]
    if(length(explicatives_out_DF) > 0){
       msg_error <- explicatives_out_DF[1]
@@ -87,25 +81,13 @@ reglog <- function(DF,
             msg_error <- paste0(msg_error,", ",expl_out_DF)
          }
          msg_error <- paste0(msg_error," are not part of DF columns")
-      }else{
-         msg_error <- paste0(msg_error," is not part of DF columns")
-      }
+      }else{msg_error <- paste0(msg_error," is not part of DF columns")}
       stop(msg_error)
    }
 
 
-
-
-
-   #
-   # y must be a character that leads to a Bernoulli variable (binary code, 1 as event, 0 as no event, no NA) in DF
-   # If not, it is coerce or stop
-   #
-
-
    if (!is.character(y) ||!(y %in% colnames(DF)))
       stop("y must be a character variable, part of DF")
-
 
 
    if (y %in% explicatives) {#if y is in 'explicatives' it is deleted
@@ -113,40 +95,6 @@ reglog <- function(DF,
       explicatives[-match(y, explicatives)]
    }
 
-
-
-   DF <- DF[!is.na(DF[, y]), ] # we remove all NA in DF$y
-
-
-
-   # Re-encoding Y
-   levels_y <- levels(as.factor(DF[, y])) #we get the levels of y (that should be 0 or 1)
-   if (length(levels_y) != 2)
-      stop("y should be a factor with 2 levels")
-   if (FALSE %in% (levels_y %in% c(0,1))){
-      DF[, y] <- as.character(DF[, y]) # prevents errors if DF[,y] is a factor
-      stringr::str_detect(levels_y, "non") -> non_position
-      stringr::str_detect(levels_y, "no ") -> no_position
-      stringr::str_detect(levels_y, "not ") -> not_position
-      if(non_position || no_position || not_position){#if there is a level with "no " or "non" or "not " in it, it will be the 0 level
-         if(!is.na(match(TRUE,non_position))) match(TRUE,non_position) -> level_non
-         if(!is.na(match(TRUE,no_position))) match(TRUE,no_position) -> level_non
-         if(!is.na(match(TRUE,not_position))) match(TRUE,not_position) -> level_non
-            DF[, y][DF[, y] == levels_y[level_non]] <- 0
-            DF[, y][DF[, y] != 0] <- 1
-         }else{#else it will be the first that will be 0
-            DF[, y][DF[, y] == levels_y[1]] <- 0
-            DF[, y][DF[, y] == levels_y[2]] <- 1
-         }
-   if(verbose)
-      cat('\ny has been changed to 0/1 factor with ',levels_y[1],' = 0 and ',levels_y[2],' = 1')
-   }
-   DF[, y] <- as.factor(DF[, y])
-
-
-   #
-   # Other params
-   #
 
    if (!is.logical(verbose))
       stop("'verbose' must be logical")
@@ -165,12 +113,7 @@ reglog <- function(DF,
 
    if(!is.logical(confirmation))
       stop("'confirmation' must be logical")
-
-
    ##################################################
-
-
-
 
 
 
@@ -180,268 +123,127 @@ reglog <- function(DF,
    #               1) DATA CLEANING                 #
    ##################################################
    if (verbose) cat(
-         "\n\n+-----------------------------+\n",
-         "  1) DATA CLEANING :",
-         "\n+-----------------------------+\n")
+"\n---+-----------------------------+-----------------------------------------------------------------------------------
+   |                             |
+   |      1) DATA CLEANING       |
+   |                             |
+   +-----------------------------+\n
+")
 
-
-   # 1.1 Clean constant variables
-   ######
-   explicatives_1 <- explicatives
-
-   for (var_i in length(explicatives):1) {
-      # Check for each variable 'var' in explicatives :
-      # if numeric variable is constant or if factor as only one level
-      # and then deleate it if so
-      var <- explicatives[var_i]
-      if (is.numeric(DF[,var])) {
-         as.factor(DF[,var]) -> DF[,var]
-         if (length(levels(DF[, var])) < 2) {#removes factor with only one level
-            if (verbose) message("\n", var, " is constant and is deleted")
-            explicatives <- explicatives[-var_i]
-         }
-         rep <- "N"
-         if (length(levels(DF[, var])) < 7) {
-            message("\n", var, " is a numeric variable with only",length(levels(DF[, var]))," different values and could be considered as a factor")
-            if(confirmation){
-               rep <- readline(paste0("Change",var,"into factor ? O/N"))
-            }else{rep <- "O"}
-            if(rep != 'O')as.numeric(DF[,var])
-         }
-      }else{
-         #convert each non numeric into a factor and check whether they have one level or not
-         as.factor(DF[,var]) -> DF[,var]
-         if (length(levels(DF[, var])) < 2) {
-            #removes factor with only one level
-            if (verbose)
-               message("\n", var, " has only one level and is deleted")
-            explicatives <- explicatives[-var_i]
-         }else{}
-      }
-   }
-   ######
-
-
-
-   # 1.2 Deleting row with NA in it
-   ######
-   DF_glm <- subset.data.frame(DF, select = c(y, explicatives))
-   DF_complete <- DF_glm[complete.cases(DF_glm),]
-
-   if (verbose)
-      cat("\nDropping all rows with NA in an explicative variable...")
-      cat("\n",(nrow(DF_glm) - nrow(DF_complete))," rows deleted (",round(100*(nrow(DF_glm) - nrow(DF_complete))/(nrow(DF_glm)),0),"%)","...........",nrow(DF_complete),"rows remaining")
-
-
-
-
-
-      ############   ############   ############   ############   ############   ############
-      #---------------------------LIMITE DE CLEANANCE ------------------------------#
-      ############   ############   ############   ############   ############   ############
-
-
-
-
-
-
-
-   if (verbose & (nrow(DF_complete) < rowstimevariable * length(DF_complete))) {
-      cat("\n\nDropping all the rows with a NA in explicative variables drove to drop too many rows.")
-      cat("\nColumns are deleted one by one from the column with the most NAs to the column with the less NA,
-          till the new dataframe has as many rows as 10 times the number of variables remaining\n\n")
-   }
-
-   i = 0
-   deleted_columns <- vector()
-   nb_NA <- apply(DF_glm[, explicatives], 2, function(x) sum(is.na(x))) #nb of deleted NA by columns
-   nb_NA <- nb_NA[order(-nb_NA)]
-
-   while (nrow(DF_complete) < rowstimevariable * length(DF_complete)) {
-      #if dropping all the rows with NA dropped more than "rowstimevariable" time the number of variables, we remove the line with the most NA
-      i <- i + 1
-      match(names(nb_NA[i]), explicatives) -> j
-      deleted_columns[i] <- explicatives[j]
-      progressbar(i = i,variable = explicatives[j],text = "Deleting columns... ",range = 5)
-      explicatives <- explicatives[-j]
-      DF_glm <- subset.data.frame(DF, select = c(y, explicatives))
-      DF_complete <- DF_glm[complete.cases(DF_glm), ]
-   }
-
-   DF_glm <- DF_complete
-
-   if (verbose) cat("\n\n\nDeleted columns are :", deleted_columns)
-
-   for (name in explicatives) { #cleaning variables with only one level
-      for (n_by_level in table(DF_glm[, name])) {
-         if (n_by_level == 0) {
-            if (verbose) message("\nSince NA cleaning, ",name,"has only one level and is deleted")
-            explicatives <- explicatives[-match(name, explicatives)]
-            break
-         }
-      }
-   }
-
-   DF_glm <- subset.data.frame(DF_glm, select = c(y, explicatives))
-
-   if (verbose) cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
-         "\n\n+----------------------------------------+\n
-         It remains ",length(explicatives),"variables and ",nrow(DF_glm),"observations",
-         "\n\n##################################################\n")
+   source("R/dataprep.R")
+   DF <- data_prep_complete(DF,y,verbose=T)
+   explicatives <- colnames(DF)[colnames(DF) != y]
    ##################################################
 
 
+
+
+
+
+
+   ##################################################
+   #            2) UNIVARIATE MODEL                 #
+   ##################################################
+   if (verbose) cat(
+"\n---+-----------------------------+-----------------------------------------------------------------------------------
+   |                             |
+   |    2) UNIVARIATE MODEL      |
+   |                             |
+   +-----------------------------+\n
+")
+
+
    # Constructing 'vect_explicative'
-   #####
+
+   #
    vect_explicative <- vector()
    n = 1
    for (var in explicatives) {#making a vector with the name of the variable displayed as many times as (levels - 1)
-      if (is.numeric(DF_glm[, var])) {
+      if (is.numeric(DF[, var])) {
          vect_explicative[n] <- var
          n <- n + 1
       } else{
-         length(levels(DF_glm[, var])) -> levels_var
+         DF[, var] <- factor( DF[, var])
+         length(levels(DF[, var])) -> levels_var
          vect_explicative[n:(n + levels_var - 2)] <- rep(var, (levels_var - 1))
          n <- n + levels_var - 1
       }
    }
-   #####
+   #
 
 
-
-   ##################################################
-   #               UNIVARIATE MODEL                 #
-   ##################################################
-   if (verbose) cat(
-      "\n\n+-----------------------------+\n",
-      "  2) UNIVARIATE MODEL :",
-      "\n+-----------------------------+\n\n")
-
+   # Rslt matrice construction
    rslt <- matrix("-", nrow = (length(vect_explicative) + 1), ncol = 7)
    rownames(rslt) <- rep(" ",(length(vect_explicative) + 1))
    rslt[1, ] <- c("", "OR", "IC", "p", "OR", "IC", "p")
-   i = 0
-   vector_var = vector()
+   #
+
+   vector_var <-  vector()
    vector_firth <- vector()
    var_i = 0
-   dev_matrix <- matrix(ncol = 2,nrow=length(explicatives))
+   i = 0
+   dev_matrix <- matrix(ncol = 2,nrow=length(explicatives)) #matrice de deviance
+
+
+   getinfo_glm <- function(mod = mod_uni,K=k,var=var_uni){
+      coef <- ifelse(firth,mod$coefficients[K + 1],summary(mod)$coefficients[K+1,1])
+      OR <- signif(exp(coef), round) #exp of logit function
+      pval <- ifelse(firth,mod$prob[K+1],summary(mod)$coefficients[K + 1, 4])
+      IC <- suppressMessages(confint(mod))
+      IC_paste <- paste0("[", round(exp(IC[K + 1, 1]), round), ";", round(exp(IC[K + 1, 2]), round), "]")
+      name <- ifelse(firth,names(mod$coefficients)[K + 1],rownames(summary(mod)$coefficients)[K + 1])
+      level_var <- str_split(name, ifelse(firth,"DF\\[, var_uni\\]",var), n = 2)[[1]][2]
+      name_var <- ifelse(level_var == "",var,paste0(var, "  (", level_var, ")"))
+      ligne <- c(name_var, OR, IC_paste, pval,level_var)
+      return(ligne)
+   }
+
 
    for (var_uni in explicatives) {
+
       progressbar(total = length(vect_explicative),i,variable = var_uni)
 
-      DF_glm %>%
-         select(y, var_uni) -> DF_uni
+      firth <- FALSE
 
-      complete_separation <- FALSE
-      complete_separation <- tryCatch(glm(DF_uni, family = binomial, data = DF_uni,separation="find") -> mod_uni,
-               error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
-                  msg <- paste0(var_uni," is causing perfect separation")
-                  msg
-                  firth <- TRUE
-                  return(firth)
-               },
-               finally={}
-               )
-      complete_separation -> firth
-      Clogg = FALSE
-
-      if(complete_separation){
-      # If there is a perfect separation : (Heinz et Al)
-      #1. Omission of NV from the model : provides no information about the effect of this unusually strong and therefore important risk factor and furthermore does not allow adjusting effects of the other risk factors for the effect of NV. Therefore, this option is totally inappropriate.
-      #2. Changing to a different type of model : Models whose parameters have di􏰃erent interpretations that are not risk-related (option 2) may be less appealing.
-      #3. Use of an ad hoc adjustment (data manipulation) : While simple adjustments of cell frequencies can have undesirable properties (Agresti and Yang), Clogg et al. pursued a more elaborate approach: creat p = sum(yi/n) with y=(0,1) ; add pk/g artifficial responses and (1−p)k/g artifficial non-responses to each of the g groups of distinct risk factor patterns, and then to do a standard analysis on the augmented data set. k is the number of parameters to estimate
-      Clogg_manipulation <- function(data=DF_uni){
-         k = 2 #numberofparametre
-         pi=vector()
-         new_DF_uni <- as.matrix(data)
-         row.names(new_DF_uni) <- NULL
-         table(data) -> table_Clogg
-         n_to_add = table(data)
-         g_number <- length(colnames(table_Clogg))
-         for (g in 1:length(colnames(table_Clogg))){
-            n = sum(table_Clogg[,g])
-            pi[g] = table_Clogg[2,g]/n
-            n_to_add[1,g] <- (1-pi[g])*g_number/k
-            n_to_add[2,g] <- (pi[g])*g_number/k
-         }
-         round(n_to_add,0) -> n_to_add
-         for(col in 1:g){
-            for (n in 1:2){
-               if(n_to_add[n,col]> 0) {
-                  new_ligne <- rep(colnames(n_to_add)[col],n_to_add[n,col])
-                  new_matrix <- cbind(rep(as.numeric(n-1),n_to_add[n,col]),new_ligne)
-                  rbind(new_DF_uni,new_matrix) -> new_DF_uni
-               }
-            }
-         }
-         new_DF_uni <- as.data.frame(new_DF_uni)
-         table(new_DF_uni)
-         table(data)
-         return(new_DF_uni)
-      }
-      if (Clogg) Clogg_manipulation(DF_uni)
-      #4. Exact logistic regression : permits replacement of the unsuitable maximum likelihood estimate by a median unbiased estimate [4]: let xir denote the value of the rth risk factor for individual i (16i6n; 26r6k) and let xi1=1 for all i. Then the median unbiased estimate of a parameter 􏰁r as well as corresponding inference are based on the exact null distribution of the su􏰂cient statistic Tr = 􏰊ni=1 yixir of 􏰁r, conditional on the observed values of the other su􏰂cient statistics Tr′ ; r′ ̸= r. An e􏰂cient algorithm is available to evaluate these conditional distributions [16] which should contain a su􏰂cient number of elements. This requirement may be violated with a single continuous risk factor but also with multiple dichotomous risk factors. In the endometrial cancer study we cannot apply exact logistic regression because there are two continuous risk factors in the model leading to degenerate distributions of all su􏰂cient stat 5) im
-      #5. Standard analysis with BettaˆNV set to a ‘high’ value (for example, the value of BettaˆNV of that iteration at which the log-likelihood changed by less than 10−6).permits replacement of the unsuitable maximum likelihood estimate by a median unbiased estimate [4]: let xir denote the value of the rth risk factor for individual i (16i6n; 26r6k) and let xi1=1 for all i. Then the median unbiased estimate of a parameter 􏰁r as well as corresponding inference are based on the exact null distribution of the su􏰂cient statistic Tr = 􏰊ni=1 yixir of 􏰁r, conditional on the observed values of the other su􏰂cient statistics Tr′ ; r′ ̸= r. An e􏰂cient algorithm is available to evaluate these conditional distributions [16] which should contain a su􏰂cient number of elements. This requirement may be violated with a single continuous risk factor but also with multiple dichotomous risk factors. In the endometrial cancer study we cannot apply exact logistic regression because there are two continuous risk factors in the model leading to degenerate distributions of all su􏰂cient statistics.permits replacement of the unsuitable maximum likelihood estimate by a median unbiased estimate [4]: let xir denote the value of the rth risk factor for individual i (16i6n; 26r6k) and let xi1=1 for all i. Then the median unbiased estimate of a parameter 􏰁r as well as corresponding inference are based on the exact null distribution of the su􏰂cient statistic Tr = 􏰊ni=1 yixir of 􏰁r, conditional on the observed values of the other su􏰂cient statistics Tr′ ; r′ ̸= r. An e􏰂cient algorithm is available to evaluate these conditional distributions [16] which should contain a su􏰂cient number of elements. This requirement may be violated with a single continuous risk factor but also with multiple dichotomous risk factors. In the endometrial cancer study we cannot apply exact logistic regression because there are two continuous risk factors in the model leading to degenerate distributions of all su􏰂cient statistics.
-      #6. Firth's method
-      if(firth) logistf::logistf(DF[,y]~DF[,var_uni], data = DF_uni, pl = FALSE, firth = TRUE) -> mod_uni
-      vector_firth <- c(vector_firth,var_uni)
-      # 7. re-cast the model
-      }
-
+      mod_uni <- logit(DF[,c(y,var_uni)])
 
       #saving deviances for each model
       var_i <- var_i+1
-      var_uni -> dev_matrix[var_i,1]
-      if(firth){
-         -2*mod_uni$loglik[2]-> dev_matrix[var_i,2]
-      }else{
-         mod_uni$deviance -> dev_matrix[var_i,2]
-      }
+      dev_matrix[var_i,] <- c(var_uni,ifelse(firth,-2*mod_uni$loglik[2],mod_uni$deviance))
 
-
-      getinfo_glm <- function(mod = mod_uni,K=k,var=var_uni){
-         coef <- ifelse(firth,mod$coefficients[K + 1],summary(mod)$coefficients[K+1,1])
-         OR <- signif(exp(coef), round) #exp of logit function
-         pval <- ifelse(firth,mod$prob[K+1],summary(mod)$coefficients[K + 1, 4])
-         IC <- suppressMessages(confint(mod))
-         IC_paste <- paste0("[", round(exp(IC[K + 1, 1]), round), ";", round(exp(IC[K + 1, 2]), round), "]")
-         name <- ifelse(firth,names(mod$coefficients)[K + 1],rownames(summary(mod)$coefficients)[K + 1])
-         level_var <- str_split(name, ifelse(firth,"DF\\[, var_uni\\]",var), n = 2)[[1]][2]
-         name_var <- ifelse(level_var == "",var,paste0(var, "  (", level_var, ")"))
-         ligne <- c(name_var, OR, IC_paste, pval,level_var)
-         return(ligne)
-      }
 
       k = 0
-      if (is.numeric(DF_glm[, var_uni])) {
+      if (is.numeric(DF[, var_uni])) {
          i <- i + 1
          k <- k + 1
          ligneR <- getinfo_glm()
          vector_var[i] <- var_uni
-         ligne <- c(ligneR[1:4], "-", "-", "-")
-         level_var <- ligneR[5]
-         rslt[i + 1, ] <- ligne
-         row.names(rslt)[i + 1]<- ifelse(firth,paste0(var_uni,level_var),rownames(summary(mod_uni)$coefficients)[k + 1])
+         rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
+         row.names(rslt)[i + 1]<- ifelse(firth,paste0(var_uni,ligneR[5]),rownames(summary(mod_uni)$coefficients)[k + 1])
       }else{
-         while (k + 1 < length(levels(DF_glm[, var_uni]))) {
+         while (k + 1 < length(levels(DF[, var_uni]))) {
             i <- i + 1
             k <- k + 1
             ligneR <- getinfo_glm()
             vector_var[i] <- var_uni
-            ligne <- c(ligneR[1:4], "-", "-", "-")
-            level_var <- ligneR[5]
-            rslt[i + 1, ] <- ligne
-            row.names(rslt)[i + 1] <- ifelse(firth,paste0(var_uni,level_var),rownames(summary(mod_uni)$coefficients)[k + 1])
+            rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
+            row.names(rslt)[i + 1] <- ifelse(firth,paste0(var_uni,ligneR[5]),rownames(summary(mod_uni)$coefficients)[k + 1])
          }
       }
    }
 
    if (length(vector_firth) > 0){
-      for (var in vector_firth){
-         message("\ncomplete separation (Hauck-Donner phenomenon) occurred for ",var)
-      }
+      for (var in vector_firth){message("\ncomplete separation (Hauck-Donner phenomenon) occurred for ",var)}
       if (verbose) cat("\nThe Firth's Bias-Reduced Logistic Regression has been used to compute these variables")
    }
+
+
+   if(verbose) cat("
+---------------------------------------------------------------------------------------------------------------------
+                   ")
+   ##################################################
+
+
 
 
 
@@ -451,19 +253,27 @@ reglog <- function(DF,
    ##################################################
    #               MULTIVARIATE MODEL               #
    ##################################################
-   if (verbose) cat(
-      "\n\n+-----------------------------+\n",
-      " 3) MULTIVARIATE MODEL :",
-      "\n+-----------------------------+\n\n")
+   if (verbose) cat("
+\n---+-----------------------------+-----------------------------------------------------------------------------------
+   |                             |
+   |    3) MULTIVARIATE MODEL    |
+   |                             |
+   +-----------------------------+\n
+")
 
    explicatives_multi <- NULL
    alpha_multi <- alpha
-
-
-   # deviance par modele univarié
-   dev_matrix[order(dev_matrix[,2])] -> dev_matrix_ordered #variable avec le moins de déviance
+   dev_matrix <- dev_matrix[order(dev_matrix[,2])] #variable avec le moins de déviance
 
    if (verbose) cat("\nThe method used for variable selection is the ",method," method\n\n")
+
+
+
+   ############   ############   ############   ############   ############   ############
+   #-------------------------------  LIMITE DE CLEANANCE  -------------------------------#
+   ############   ############   ############   ############   ############   ############
+
+
 
    if(method == "forward" || method == "stepwise"){
    # the two methods are equivalent but in stepwise, variables are removed if < alpha once in the model
@@ -481,27 +291,18 @@ reglog <- function(DF,
 
       anova_glm = 0
       fin = 1
-      dev_matrix_ordered[-1] -> remainings
+      dev_matrix[-1] -> remainings
       vector() -> used
 
       while(anova_glm < 0.2 & length(remainings) > 0){
 
          # 1er modèle réalisé avec le modèle avec la plus faible déviance
-         formule = paste0(y,'~',dev_matrix_ordered[1])
+         formule = paste0(y,'~',dev_matrix[1])
          for (v in used){formule = paste0(formule,"+",v)}
          formule = formula(formule)
          firth <- FALSE
-         firth <- tryCatch(glm(formule,data = DF_glm,family=binomial,separation="find") -> model1,
-                           error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
-                              msg <- paste0(var_uni," is causing perfect separation")
-                              msg
-                              firth <- TRUE
-                              return(firth)
-                           },
-                           finally={}
-         )
-         if(firth) logistf::logistf(formule, data=DF_glm, pl = FALSE, firth = TRUE) -> model1
-
+         model1 <- logit(DF[,c(y,var_uni)])
+         if(firth) logistf::logistf(formule, data=DF, pl = FALSE, firth = TRUE) -> model1
 
          fin = fin + 1
          anova_glm_list <- matrix(ncol = 2,nrow=length(remainings))
@@ -529,16 +330,8 @@ reglog <- function(DF,
 
             # les 2ème modèles potentiels models sont réalisés
             firth <- FALSE
-            firth <- tryCatch(glm(formule2,data = DF_glm,family=binomial,separation="find") -> model2,
-                              error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
-                                 msg <- paste0(var_uni," is causing perfect separation")
-                                 msg
-                                 firth <- TRUE
-                                 return(firth)
-                              },
-                              finally={}
-            )
-            if(firth) logistf::logistf(formule2, data=DF_glm, pl = FALSE, firth = TRUE) -> model2
+            model1 <- logit(DF[,c(y,nvlle_var)])
+            if(firth) logistf::logistf(formule2, data=DF, pl = FALSE, firth = TRUE) -> model2
 
             critere(model1) -> deviance1
             critere(model2) -> deviance2
@@ -547,24 +340,22 @@ reglog <- function(DF,
             if (length(all.vars(formule)[-1]) > 1){
                for(k in 2:length(all.vars(formule)[-1])){formule_diff=paste0(formule_diff,"+",all.vars(formule)[k+1])}
             }
-            formule_diff = formula(formule_diff)
-            anova(model2,formula=formule_diff)$pval  -> anova_glm
+            formule_diff <- formula(formule_diff)
+            anova_glm <- anova(model2,formula=formule_diff)$pval
 
             nom_model <- all.vars(formule2)[-1][1]
             for(ex in 2:length(all.vars(formule2)[-1])){nom_model <- paste0(nom_model,"+",all.vars(formule2)[-1][ex])}
 
             anova_glm_list[d,] <- c(nom_model,anova_glm)
 
-            if(verbose){
-               cat('\n\nLe modèle contenant les variables [',(all.vars(formule)),'] est comparé au modèle contenant [',(all.vars(formule2)),"]")
-               cat('\n le modèle 1 à une déviance de ',deviance1,' contre ',deviance2,'pour le 2ème modèle')
-               cat('\nle meilleur modèle est le modèle',ifelse(diff_critere>0,'1','2'))
-            }
+            if(verbose) cat('\n\nLe modèle contenant les variables [',(all.vars(formule)),'] est comparé au modèle contenant [',(all.vars(formule2)),"]
+               le modèle 1 à une déviance de ",deviance1,' contre ',deviance2,'pour le 2ème modèle
+               le meilleur modèle est le modèle',ifelse(diff_critere>0,'1','2'))
+
             d = d+1
          }
          anova_glm_list[order(anova_glm_list[,2])][1] -> newformula
-         if(verbose){
-            cat("\n\n#####\n le meilleur modèle est",newformula) }
+         if(verbose) cat("\n\n#####\n le meilleur modèle est",newformula)
          paste0(y,"~",newformula) -> newformula
          formula(newformula) -> newformula
          used <- all.vars(newformula)[-1]
@@ -585,15 +376,11 @@ reglog <- function(DF,
          }
       }
 
-      DF_glm %>%
-         select(y, all_of(explicatives_multi)) %>%
-         glm(., family = binomial, data = .) -> mod_multi
+      glm(DF[,c(y,explicatives_multi)], family = "binomial") -> mod_multi
       }
 
 
-
-
-      if(method == "backward"){
+   if(method == "backward"){
          #Si la méthode descendante utilise un test de déviance, nous éliminons ensuite la variable
          #Xj dont la valeur p associée à la statistique de test de déviance est la plus grande. Nous
          #nous arrêtons lorsque toutes les variables sont retirées du modèle ou lorsque la valeur p est
@@ -612,19 +399,15 @@ reglog <- function(DF,
                pas <- pas + 1
 
                ## Model with all (new) explicatives_multi variables
-               DF_glm %>%
-                  select(y, all_of(explicatives_multi)) %>%
-                  glm(., family = binomial, data = .) -> mod_multi
+               glm(DF[,c(y,explicatives_multi)], family = binomial, data = DF[,c(y,explicatives_multi)]) -> mod_multi
 
                pval <- summary(mod_multi)$coefficients[, 4] #all p-values
                pval <- pval[-1] #remove intercept
                i_pval <- rank(-pval) #vector with each position of pval ordered with 1 as the worst pval
                order_pval <- order(-pval)
                length_model <- length(pval) # != of length(explicatives) if levels > 2
-               vect_explicative_multi <- rslt[,1] # vector with all explicatives_multi with each levels
                vect_explicative_multi <- vect_explicative_multi[-1] #removing empty first row
-               level_var_multi <- rownames(summary(mod_multi)$coefficients) # == names(vect_explicative_multi) - NAs
-               level_var_multi <- level_var_multi[-1]
+               level_var_multi <- rownames(summary(mod_multi)$coefficients)[-1] # == names(vect_explicative_multi) - NAs
 
                if(verbose){
                   o = 0
@@ -637,7 +420,6 @@ reglog <- function(DF,
                }
 
             o <- 0
-
             for (var_left in level_var_multi) {
                o <- o+1
                if (i_pval[o]==1){
@@ -665,81 +447,76 @@ reglog <- function(DF,
 
 
 
-      explicatives_multi <- NULL
-      if(method == "PS"){
-         alpha_PS = 0.25
-         rslt[-1,4] -> pval
-         pval[pval < alpha_PS] -> pval_significant
-         pval[pval >= alpha_PS] -> pval_nonsignificant
-         explicatives_multi_candidates <- vector()
+   explicatives_multi <- NULL
 
-         for(new_var in names(pval_significant)){#Gets the coressponding variable terms
-            rslt[match(new_var,rownames(rslt)),1] -> new_expl
-            str_split(new_expl," ")[[1]][1] -> new_expl #corresponding variable
-            explicatives_multi_candidates <- c(explicatives_multi_candidates,new_expl)
-         }
 
-         DF_glm %>%
-            select(y, all_of(explicatives_multi_candidates)) %>%
-            glm(., family = binomial, data = .) -> mod_multi
-         explicatives_multi_candidates -> explicatives_multi
-         summary(mod_multi)$coefficients[-1,1] -> coeffs
+   if(method == "PS"){
+      alpha_PS = 0.25
+      rslt[-1,4] -> pval
+      pval[pval < alpha_PS] -> pval_significant
+      pval[pval >= alpha_PS] -> pval_nonsignificant
+      explicatives_multi_candidates <- vector()
 
-         for(new_var in names(pval_significant)){
-            summary(mod_multi)$coefficients[match(new_var,rownames(summary(mod_multi)$coefficients)),4] -> pval
-            if(is.na(pval)) {
-               explicatives_multi_candidates[explicatives_multi_candidates != new_expl] -> explicatives_multi_candidates
-               explicatives_multi[explicatives_multi != new_var] -> explicatives_multi
+      for(new_var in names(pval_significant)){#Gets the coressponding variable terms
+         rslt[match(new_var,rownames(rslt)),1] -> new_expl
+         str_split(new_expl," ")[[1]][1] -> new_expl #corresponding variable
+         explicatives_multi_candidates <- c(explicatives_multi_candidates,new_expl)
+      }
+
+      glm(DF[,c(y,explicatives_multi_candidates)], family = binomial) -> mod_multi
+      explicatives_multi_candidates -> explicatives_multi
+      summary(mod_multi)$coefficients[-1,1] -> coeffs
+
+      for(new_var in names(pval_significant)){
+         summary(mod_multi)$coefficients[match(new_var,rownames(summary(mod_multi)$coefficients)),4] -> pval
+         if(is.na(pval)) {
+            explicatives_multi_candidates[explicatives_multi_candidates != new_expl] -> explicatives_multi_candidates
+            explicatives_multi[explicatives_multi != new_var] -> explicatives_multi
+         }else{
+            if (pval < 0.1){
+               #we keep the variable
             }else{
-               if (pval < 0.1){
+               #we delete the variable if change in definite model < 20% of the full model
+               rslt[match(new_var,rownames(rslt)),1] -> new_expl
+               str_split(new_expl," ")[[1]][1] -> new_expl #corresponding variable
+               explicatives_multi_candidates[explicatives_multi_candidates != new_expl] -> explicatives_multi_candidates
+
+               # We check wether the model has change for more than 15% with the deleting
+               glm(DF[,c(y,explicatives_multi)], family = binomial, data = DF[,c(y,explicatives_multi)]) -> mod_multi_new
+               summary(mod_multi_new)$coefficients[-1,1] -> coeff_new #all coeffs without intercept
+               match(names(coeff_new),names(coeffs)) -> match_coeff_new #coressponding place in old coeffs for each new coeff
+               (coeff_new-coeffs[match_coeff_new])/coeffs[match_coeff_new] -> relative_changes
+
+               if(TRUE %in% relative_changes > 20/100){
                   #we keep the variable
-               }else{
-                  #we delete the variable if change in definite model < 20% of the full model
-                  rslt[match(new_var,rownames(rslt)),1] -> new_expl
-                  str_split(new_expl," ")[[1]][1] -> new_expl #corresponding variable
-                  explicatives_multi_candidates[explicatives_multi_candidates != new_expl] -> explicatives_multi_candidates
-
-                  # We check wether the model has change for more than 15% with the deleting
-                  DF_glm %>%
-                     select(y, all_of(explicatives_multi_candidates)) %>%
-                     glm(., family = binomial, data = .) -> mod_multi_new
-                  summary(mod_multi_new)$coefficients[-1,1] -> coeff_new #all coeffs without intercept
-                  match(names(coeff_new),names(coeffs)) -> match_coeff_new #coressponding place in old coeffs for each new coeff
-                  (coeff_new-coeffs[match_coeff_new])/coeffs[match_coeff_new] -> relative_changes
-
-                  if(TRUE %in% relative_changes > 20/100){
-                     #we keep the variable
-                     explicatives_multi_candidates = c(new_var,explicatives_multi_candidates)
-                  }else{
-                     #we definitely delete the variable
-                     explicatives_multi[explicatives_multi != new_var] -> explicatives_multi
-                  }
-               }
+                  explicatives_multi_candidates = c(new_var,explicatives_multi_candidates)
+               }else{explicatives_multi <- explicatives_multi[explicatives_multi != new_var]}
             }
          }
+      }
 
-         names(pval_nonsignificant) -> nonsignificants_vars
-         for(new_var in nonsignificants_vars){
-            rslt[match(new_var,rownames(rslt)),1] -> new_expl
-            str_split(new_expl," ")[[1]][1] -> new_expl
-            #any variable not selected for the original multivariate model is added back one at a time,
-            #with significant covariates and confounders retained earlier. This step can be helpful in identifying variables that, by themselves, are not significantly related to the outcome but make an important contribution in the presence of other variables. Any that are significant at the 0.1 or 0.15 level are put in the model, and the model is iteratively reduced as before but only for the variables that were additionally added.
-         }
+      names(pval_nonsignificant) -> nonsignificants_vars
+      for(new_var in nonsignificants_vars){
+         rslt[match(new_var,rownames(rslt)),1] -> new_expl
+         str_split(new_expl," ")[[1]][1] -> new_expl
+         #any variable not selected for the original multivariate model is added back one at a time,
+         #with significant covariates and confounders retained earlier. This step can be helpful in identifying variables that, by themselves, are not significantly related to the outcome but make an important contribution in the presence of other variables. Any that are significant at the 0.1 or 0.15 level are put in the model, and the model is iteratively reduced as before but only for the variables that were additionally added.
+      }
 
 
-         # Definitive model
-         DF_glm %>%
-            select(y, all_of(explicatives_multi)) %>%
-            glm(., family = binomial, data = .) -> mod_multi
+      # Definitive model
+         glm(DF[,c(y,explicatives_multi)], family = binomial) -> mod_multi
 
-            }
+   }
    ##################################################
 
 
+
+
    ##################################################
-   #              MATRICE DE RÉSULTATS              #
+   #                 RESULT MATRIX                  #
    ##################################################
-   OR <- exp(summary(mod_multi)$coefficients[, 1]) #exp de la fonction logit
+   OR <- exp(summary(mod_multi)$coefficients[, 1])
    pval <- summary(mod_multi)$coefficients[, 4]
    IC <- suppressMessages(confint(mod_multi))
    i <- 0

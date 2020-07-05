@@ -8,15 +8,31 @@
 #'
 #' @examples explicatives <- c("event","sexe","weight")
 #' @examples formule <- formulation(explicatives)
-formulation <- function(object,y=object[1]){
+formulation <- function(object,y=NULL){
 
 
 
 
-   # 1. Change explicatives if y is in it
+   # 1. Getting y
    #############################################
-   if(y %in% explicatives)
-      explicatives <- explicatives[-y]
+   if(is.null(y)){
+      if(is.data.frame(object) || is.matrix(object) || is.tbl(object)){
+         y <- colnames(object)[1]
+
+      }else{object <- object[1]}
+   }
+   #####
+
+
+
+
+   # 2. Remove y from object
+   #############################################
+   if(is.data.frame(object) || is.matrix(object) || is.tbl(object)){
+      object <- as.data.frame(object)
+      object %>%
+         select(-y) -> object
+   }else{object[object != y]}
    #####
 
 
@@ -27,15 +43,11 @@ formulation <- function(object,y=object[1]){
    if(is.data.frame(object) || is.matrix(object) || is.tbl(object)){
       if(is.null(colnames(object))){
          object <- object[1,]
-      }else{
-         object <- colnames(object)
-      }
+      }else{object <- colnames(object)}
    }else{
       if(is.vector(object) || is.character(object)){
          if(length(object) == 0) stop("object is null")
-      }else{
-         stop("the object is not cohercible into formula")
-      }
+      }else{stop("the object is not cohercible into formula")}
    }
    #####
 
