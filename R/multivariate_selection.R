@@ -5,7 +5,8 @@ multivariate_selection <-
             principal_factor=NULL,
             method = "backward",
             criteria = "Wald",
-            check_interactions = TRUE)
+            check_interactions = TRUE,
+            alpha = 0.05)
    {
       # MODEL 0
       if ("forward" %in% method)
@@ -65,15 +66,55 @@ multivariate_selection <-
          {
             signif_interact_table[j] <- paste0(principal_factor,":",signif_interact_table[j])
          }
-         explicatives_remains <- c(explicatives,signif_interact_table)
+         interactives_remains <- signif_interact_table
+      }
+      #####
+
+      # Backward selection for interaction
+      #ERREUR
+      #####
+      source("R/formulation.R")
+      if (length(interactives_remains) > 0)
+      {
+         for (i in seq(interactives_remains))
+         {
+         formule <- formulation(DF[,c(y,explicatives_remains)])
+            for (i in seq(interactives_remains))
+            {
+               interactive_formule <- paste0("+",interactives_remains[i])
+            }
+            newterms <- interactive_formule
+            formule <- update(formule, ~ . newterms)
+            model0 <- glm(formule, data = DF, family = "binomial")
+            pvals <- summary(model0)$coefficients[,4]
+
+            #Elimination one by one of all interaction variable based on PVALUE
+            interact_pval <- pvals[match(interactives_remains,names(pvals))]
+            interact_pval <- interact_pval[order(-interact_pval)]
+            if (interact_pval[1] > alpha)
+            {
+               interactives_remains <- interactives_remains[interactives_remains != names(interact_pval)]
+            }
+         }
       }
       #####
 
 
-      for (i in seq(explicatives))
-      {
-        var_test <- explicatives[i]
-      }
+      #Backward selection for all
+      #####
+      #Si la méthode descendante utilise un test de déviance, nous éliminons ensuite la variable
+      #Xj dont la valeur p associée à la statistique de test de déviance est la plus grande. Nous
+      #nous arrêtons lorsque toutes les variables sont retirées du modèle ou lorsque la valeur p est
+      #plus petite qu’une valeur seuil.
+
+
+      #####
+
+
+
+
+
+
    }
 
 
@@ -98,20 +139,39 @@ multivariate_selection <-
 #####
 #COMPARISON OF MODEL 1 AND MODEL 2
 ## CRITERIA
-# 1. significance criteria
-   # =to compare the log-likelihoods of 2 nested models :
-      # A. Wald test
-      # B. Score test
-      # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested
+# 1. significance criteria =to compare the log-likelihoods of 2 nested models :
+      # A. Wald test : only if there is 1 difference
+      # B. Score test : only if there is 1 difference
+      # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested => only valable way
 # 2. information criteria
 
-   critere <-
-      function(model,
-               critere_choix = "deviance")
-         {
 
-         if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
-            stop("criteria is no on the list")
+   # Test entre 2 models
+   models_test <- function(model,
+                           y,
+                           var_diff,
+                           critere_choix = "deviance")
+   {
+      if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
+         stop("criteria is no on the list")
+
+      if (critere_choix == "deviance")
+      {
+         formule_diff_terms <- attr(model$terms, "term.labels")
+         formule_diff_terms <- formule_diff_terms[formule_diff_terms != var_diff]
+         formule_diff <- paste0(y, "~", formule_diff_terms[1])
+         for (t in seq(formule_diff_terms[-1]))
+         {
+            formule_diff <- paste0(formule_diff, "+", formule_diff_terms[t])
+         }
+         formule_diff <- formula(formule_diff)
+         model2 <- glm(formule_diff, data = DF, family = "binomial")
+         anova_test <- anova(model, model2, test = "LRT")
+         pval <- anova_test$Pr[nrow(anova_test)]
+      }
+      return(pval)
+   }
+
 
 
 
