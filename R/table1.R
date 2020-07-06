@@ -13,8 +13,7 @@
 #' @import stringr
 #' @import stats
 #' @examples
-table1 <-
-   function(DF,
+table1 <- function(DF,
             y,
             ynames = NULL,
             overall = TRUE,
@@ -81,6 +80,7 @@ table1 <-
       tabf <- rbind(tabf, ligne2)
       ##################################################
 
+
       y_index <- match(y, colnames(DF))
       DF_without_y <- DF[, -y_index]
       i <- 1
@@ -90,8 +90,8 @@ table1 <-
 
       for (var in DF_without_y) {
          i <- i + 1
-         progressbar(total = length(DF),i)
          varname <- colnames(DF)[i]
+         progressbar(total = length(DF),i,variable = varname)
          ligne <- varname
          sign <- NULL
 
@@ -124,8 +124,7 @@ table1 <-
          }
 
 
-         else{
-            #if non numeric
+         else{#if non numeric
             var <- stringr::str_to_lower(var)
             var <- stringr::str_replace(var, "é", "e")
             var <- stringr::str_replace(var, "è", "e")
@@ -195,15 +194,12 @@ table1 <-
 
             ## Variable with 2 levels
             if (length(levels(var)) == 2) {
-               if (levels(var)[1] == "non" ||
-                   levels(var)[1] == "no") {
-                  var <-
-                     ifelse(levels(var)[1] == "no",
-                            relevel(var, "yes"),
-                            relevel(var, "oui"))
+               if (levels(var)[1] == "non" || levels(var)[1] == "no") {
+                  var <- if(levels(var)[1] == "no"){
+                     relevel(var, "yes")
+                     }else{relevel(var, "oui")}
                }
-               ligne <-
-                  paste0(ligne, " (", levels(var)[1], ") - no. (%)")
+               ligne <- paste0(ligne, " (", levels(var)[1], ") - no. (%)")
 
                for (j in 1:levels_y) {
                   no <- tb[j, 1]
@@ -251,8 +247,7 @@ table1 <-
       }
 
       if (title) {
-         title_text <-
-            "Table 1. Patients baseline characteristics by study group"
+         title_text <- "Table 1. Patients baseline characteristics by study group"
          rslt$title <- text_legend
       } else{
          title_text <- NULL

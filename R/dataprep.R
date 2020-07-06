@@ -1,6 +1,20 @@
+
+
+
+
 source("R/progressbar.R")
 
 
+#' Title
+#'
+#' @param col
+#' @param verbose
+#'
+#' @return
+#' @export
+#' @import stringr
+#'
+#' @examples
 tobinary <- function(col, verbose=T){
 
    levels_col <- levels(as.factor(col)) #get the levels of col (that should be 0 or 1)
@@ -130,8 +144,8 @@ NA_rm_for_glm <- function(DF,y,rowlimit_factor=10,min_explicatives=10,floor_pval
 checkforfactor <- function(DF,vars=colnames(DF),confirmation=TRUE,verbose=TRUE) {
    DF <- as.data.frame(DF)
    for (var_i in length(vars):1) {
-      # Check for each variable 'var' in vars :
-      # if numeric variable is constant or if factor as only one level
+      # Check for each variable 'var' in vars if numeric variable is constant
+      # and if factor as only one level
       # and then deleate it if so
       var <- vars[var_i]
 
@@ -147,13 +161,10 @@ checkforfactor <- function(DF,vars=colnames(DF),confirmation=TRUE,verbose=TRUE) 
             if(confirmation){
                rep <- readline(paste0("Change",var,"into factor ? O/N"))
             }else{rep <- "O"}
-            if(rep != 'O')as.numeric(DF[,var])
-         }
-      }
+            if(rep != 'O') as.numeric(DF[,var])-> DF[,var]
+         }else{as.numeric(DF[,var])-> DF[,var]}
 
-
-      else{
-         #convert each non numeric into a factor and check whether they have one level or not
+      }else{#convert each non numeric into a factor and check whether they have one level or not
          as.factor(DF[,var]) -> DF[,var]
          if (length(levels(DF[, var])) < 2) {
             #removes factor with only one level
@@ -170,6 +181,28 @@ checkforfactor <- function(DF,vars=colnames(DF),confirmation=TRUE,verbose=TRUE) 
 
 
 
+format_data <- function(DF,method=NULL){
+   as.data.frame(DF) -> DF
+
+
+   if("plain" %in% method){
+      for(i in 1:length(DF)){
+         if(is.character(DF[,i])){
+            DF[,i] <- stringr::str_to_lower(DF[,i])
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[éèêë]","e")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[àâ]","a")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[ï]","i")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[ù]","u")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[ôö]","o")
+         }
+      }
+   }
+
+   return(DF)
+}
+
+
+
 ######################################################
 #########      DATA PREP COMPLETE            #########
 ######################################################
@@ -180,6 +213,9 @@ data_prep_complete <- function(DF,y,verbose=TRUE){
 
    DF <- as.data.frame(DF)
    DF1 <- DF
+
+   # Caractere preparation
+   DF <- format_data(DF)
 
    # Data prep of y
    DF[,y] <- tobinary(DF[,y])
@@ -200,6 +236,7 @@ data_prep_complete <- function(DF,y,verbose=TRUE){
    \n\n+-----------------------------------------------------------------------------------------------------------------+\n")
 
    as.data.frame(DF) -> DF
+
 
    return(DF)
 }

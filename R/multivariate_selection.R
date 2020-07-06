@@ -1,12 +1,132 @@
-multivariate_selection <- function(method="backward"){
+multivariate_selection <-
+   function(DF,
+            y,
+            explicatives = colnames(DF)[colnames(DF) != y],
+            principal_factor=NULL,
+            method = "backward",
+            criteria = "Wald",
+            check_interactions = TRUE)
+   {
+      # MODEL 0
+      if ("forward" %in% method)
+      {
+         model0 <- glm(DF[,y] ~ 1,family = "binomial") # NULL MODEL
+      } else if ("backward" %in% method)
+         model0 <- logit(DF[, c(y, colnames(DF)[colnames(DF) != y])]) # FULL MODEL
+
+
+   explicatives_multi_test <- c("null model",explicatives)
+
+   if ("backward" %in% method)
+   {
+      #Determination of the principal factor : wether specified or the variable for which the deviance is the smallest
+      #####
+      if (is.null(principal_factor)) {
+         # Determination of univariate p-val for all elements
+         models1 <- data.frame(row.names = explicatives_multi_test)
+         for (j in seq(explicatives_multi_test))
+         {
+            if (j == 1)
+               model1 <- glm(DF[ ,y]~1, family = "binomial")
+            else
+               model1 <- glm(DF[ ,y]~DF[, explicatives_multi_test[j]], family = "binomial")
+            models1$deviance[j] <- model1$deviance
+         }
+         principal_factors <- models1[order(models1$deviance),,drop = FALSE]
+         principal_factor <-  rownames(principal_factors)[1]
+      }
+      #####
+
+
+      explicatives_remains <- explicatives[explicatives != principal_factor]
+
+      model1 <- glm(DF[ ,y]~DF[, principal_factor], family = "binomial")
+
+
+      # Determination of interactions
+      #####
+      if (check_interactions)
+      {
+         interact_table <-  data.frame(row.names = explicatives_remains)
+         for (i in seq(explicatives_remains))
+         {
+            formule1 <- paste(y, "~", principal_factor, "+", explicatives_remains[i])
+            formule2 <- paste(formule1, "+", principal_factor, ":", explicatives_remains[i])
+            formule1 <- formula(formule1)
+            formule2 <- formula(formule2)
+            model_interact <- glm(formule2,data = DF, family = "binomial")
+            anova <- anova(model_interact,test = "LRT")
+            pvalue <- anova$Pr[4]
+            interact_table$pval[i] <- pvalue
+         }
+         interact_table <- interact_table[order(interact_table$pval),,drop = FALSE] #df with all p-values of likelihood ratio test between model with and without interaction
+         signif_interact_table <- row.names(interact_table)[interact_table[,1] < 0.05]
+         for (j in seq(signif_interact_table))
+         {
+            signif_interact_table[j] <- paste0(principal_factor,":",signif_interact_table[j])
+         }
+         explicatives_remains <- c(explicatives,signif_interact_table)
+      }
+      #####
+
+
+      for (i in seq(explicatives))
+      {
+        var_test <- explicatives[i]
+      }
+   }
+
+
+
+ vars_remainings <- explicatives
+
+
+
+#####
+#MODEL1
+   model1 <- logit(DF_multi1)
+#####
+
+
+#####
+#MODEL 2
+   newvar <- vars_remainings[i]
+   DF_multi2 <- DF[,colnames(DF_multi1,newvar)]
+   model2 <- logit(DF_multi2)
+#####
+
+#####
+#COMPARISON OF MODEL 1 AND MODEL 2
+## CRITERIA
+# 1. significance criteria
+   # =to compare the log-likelihoods of 2 nested models :
+      # A. Wald test
+      # B. Score test
+      # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested
+# 2. information criteria
+
+   critere <-
+      function(model,
+               critere_choix = "deviance")
+         {
+
+         if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
+            stop("criteria is no on the list")
 
 
 
 
 
-
-
-
+      if (logistf::is.logistf(model))
+         {
+         deviance <- -2 * (model$loglik[1])
+         } else{
+         deviance <- model$deviance
+         }
+      return(deviance)
+      #AIC
+      #BIC
+   }
 
 
 

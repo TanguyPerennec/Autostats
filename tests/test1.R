@@ -15,7 +15,7 @@ DF <- description_indiv_decode
 y="sex_PS"
 
 
-
+#Datas psy
 ##########
 library(readr)
 DF <- read_delim("data/thesepsyclean.csv",

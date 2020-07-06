@@ -6,6 +6,8 @@
 #' @return formulation returns a formula object
 #' @export formule
 #'
+#' @import dplyr
+#'
 #' @examples explicatives <- c("event","sexe","weight")
 #' @examples formule <- formulation(explicatives)
 formulation <- function(object,y=NULL){
@@ -15,10 +17,9 @@ formulation <- function(object,y=NULL){
 
    # 1. Getting y
    #############################################
-   if(is.null(y)){
+   if(is.object(y)){
       if(is.data.frame(object) || is.matrix(object) || is.tbl(object)){
          y <- colnames(object)[1]
-
       }else{object <- object[1]}
    }
    #####
@@ -26,13 +27,12 @@ formulation <- function(object,y=NULL){
 
 
 
-   # 2. Remove y from object
+   # 2. Put y in first position
    #############################################
    if(is.data.frame(object) || is.matrix(object) || is.tbl(object)){
       object <- as.data.frame(object)
-      object %>%
-         select(-y) -> object
-   }else{object[object != y]}
+      object <- object[,c(y,colnames(object)[colnames(object) != y])]
+   }else{object <- c(y,object[object != y])}
    #####
 
 
@@ -56,8 +56,8 @@ formulation <- function(object,y=NULL){
 
    # 3. Coerce object to formula
    #############################################
-   formule <- paste0(y,"~",object[1])
-   for(explicative in object[-1]){
+   formule <- paste0(y,"~",object[2])
+   for(explicative in object[-c(1,2)]){
       formule <- paste0(formule,"+",explicative)
    }
    formule <- formula(formule)

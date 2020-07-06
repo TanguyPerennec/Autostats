@@ -53,7 +53,7 @@ reglog <- function(DF,
                   confirmation = TRUE) {
 
 
-
+   source("R/dataprep.R")
    #To ignore the warnings during usage
    #options(warn=-1)
    #options("getSymbols.warning4.0"=FALSE)
@@ -130,7 +130,7 @@ reglog <- function(DF,
    +-----------------------------+\n
 ")
 
-   source("R/dataprep.R")
+
    DF <- data_prep_complete(DF,y,verbose=T)
    explicatives <- colnames(DF)[colnames(DF) != y]
    ##################################################
@@ -269,8 +269,13 @@ reglog <- function(DF,
 
 
 
+
+
+
    ############   ############   ############   ############   ############   ############
    #-------------------------------  LIMITE DE CLEANANCE  -------------------------------#
+   row.names(rslt) <- NULL
+   rslt
    ############   ############   ############   ############   ############   ############
 
 
@@ -363,6 +368,7 @@ reglog <- function(DF,
             remainings[remainings != var_delete] -> remainings
          }
       }
+
       model2 -> modelfinal
       used -> explicatives_multi
 
@@ -508,6 +514,19 @@ reglog <- function(DF,
          glm(DF[,c(y,explicatives_multi)], family = binomial) -> mod_multi
 
    }
+
+
+   if(method == "Augmented backward"){}
+
+
+   if(method == "Best subset"){}
+
+
+   if(method == "Univariable"){}
+
+
+   if(method == "LASSO"){}
+
    ##################################################
 
 
