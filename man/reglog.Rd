@@ -15,7 +15,8 @@ reglog(
   round = 3,
   method = "backward",
   rowstimevariable = 10,
-  confirmation = TRUE
+  confirmation = TRUE,
+  exit = c("console", "excel")
 )
 }
 \arguments{
@@ -40,6 +41,8 @@ reglog(
 \item{rowstimevariable}{: minimum number of times row has to be bigger than variables}
 
 \item{confirmation}{logical : ask confirmation before doing a transformation}
+
+\item{exit}{character or character vector specifying the exit of the fonction : results in the console or saved in excel file}
 }
 \value{
 reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model

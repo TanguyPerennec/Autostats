@@ -16,6 +16,7 @@
 #' @param round num : number of digits to display in the final table.
 #' @param rowstimevariable : minimum number of times row has to be bigger than variables
 #' @param confirmation logical : ask confirmation before doing a transformation
+#' @param exit character or character vector specifying the exit of the fonction : results in the console or saved in excel file
 #'
 #' @details Method used to select the variables in the multivariate model can be set it the "method" parameter.
 #'  "backward" elimination is the default technique : the least significant effect that does not meet the
@@ -29,11 +30,8 @@
 #' @return reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model
 #' @export
 #' @import dplyr
-#' @import MASS
 #' @import logistf
 #' @import stringr
-#' @import safeBinaryRegression
-#' @importFrom autostats progressbar
 #'
 #' @references Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17
 #' @references Heinze G, Schemper M. A solution to the problem of separation in logistic regression. Stat Med. 2002;21(16):2409-2419. doi:10.1002/sim.1047
@@ -47,7 +45,8 @@ reglog <- function(DF,
                   round = 3,
                   method = "backward",
                   rowstimevariable = 10,
-                  confirmation = TRUE)
+                  confirmation = TRUE,
+                  exit = c("console","excel"))
 {
 
 
@@ -135,7 +134,8 @@ reglog <- function(DF,
    #               1) DATA CLEANING                 #
    ##################################################
    if (verbose) cat(
-"\n---+-----------------------------+-----------------------------------------------------------------------------------
+"\n\n\n\n\n
+\n---+-----------------------------+-------------------------------------------------------------------------------------------
    |                             |
    |      1) DATA CLEANING       |
    |                             |
@@ -156,7 +156,8 @@ reglog <- function(DF,
    #            2) UNIVARIATE MODEL                 #
    ##################################################
    if (verbose) cat(
-"\n---+-----------------------------+-----------------------------------------------------------------------------------
+"\n
+\n---+-----------------------------+--------------------------------------------------------------------------------------------
    |                             |
    |    2) UNIVARIATE MODEL      |
    |                             |
@@ -262,7 +263,7 @@ reglog <- function(DF,
 
 
    if (verbose) cat("
----------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------
                    ")
    ##################################################
 
@@ -276,8 +277,8 @@ reglog <- function(DF,
    ##################################################
    #               MULTIVARIATE MODEL               #
    ##################################################
-   if (verbose) cat("
-\n---+-----------------------------+-----------------------------------------------------------------------------------
+   if (verbose) cat("\n
+\n---+-----------------------------+--------------------------------------------------------------------------------------------
    |                             |
    |    3) MULTIVARIATE MODEL    |
    |                             |
@@ -328,7 +329,19 @@ reglog <- function(DF,
    ##################################################
 
 
+   # EXIT
+   ##################################################
+   row.names(rslt) <- NULL
+   if ("console" %in% exit)
+   {
+      cat("\n\n\n")
+      print(rslt)
+   }
+   if ("excel" %in% exit)
+   {
+      excel(rslt, title_sheet = "logisitc regression", file_name = "results.xlsx")
+   }
+   ##################################################
 
-      row.names(rslt) <- NULL
       return(rslt)
 }

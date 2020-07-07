@@ -4,7 +4,7 @@
 #' @param y (optional) : the variable that will be the first term of the formula. If kept empty, y will be the first element in the object given to the function.
 #'
 #' @return formulation returns a formula object
-#' @export formule
+#' @export
 #'
 #' @import dplyr
 formulation <- function(object,y=NULL){

@@ -5,7 +5,6 @@
 #'
 #' @return
 #' @export
-#' @import formulation
 #'
 #' @examples
 logit <- function(DF,y=colnames(DF)[1]){
@@ -21,7 +20,7 @@ logit <- function(DF,y=colnames(DF)[1]){
 
    # 2) Verify conditions and transformation
    ##################################################
-   if(!is.factor(DF[,y])){
+   if (!is.factor(DF[,y])){
       DF <- as.data.frame(DF)
       DF[,y] <- tobinary(DF[,y])
    }

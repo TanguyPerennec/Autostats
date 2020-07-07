@@ -1,3 +1,19 @@
+#' Title
+#'
+#' @param DF dataframe
+#' @param y character
+#' @param explicatives vector of character
+#' @param principal_factor (optional)
+#' @param method character
+#' @param criteria character
+#' @param check_interactions logical
+#' @param alpha num
+#' @param verbose logical
+#'
+#' @return
+#' @export
+#'
+#' @examples
 multivariate_selection <-
    function(DF,
             y,

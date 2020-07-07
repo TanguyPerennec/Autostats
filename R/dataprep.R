@@ -9,7 +9,6 @@ source("R/logit.R")
 #' @return
 #' @export
 #' @import stringr
-#' @import progressbar
 tobinary <- function(col,
                      verbose = T)
 {
