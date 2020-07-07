@@ -4,12 +4,14 @@
 \alias{excel}
 \title{xlsx}
 \usage{
-excel(table, title_sheet = NULL, file_name)
+excel(table, title_sheet = NULL, file_name = "results.xlsx")
 }
 \arguments{
 \item{table}{matrix or dataframe to write in a excel file}
 
 \item{title_sheet}{character : title of the sheet in the excel file}
+
+\item{file_name}{character : name of the file name}
 }
 \value{
 

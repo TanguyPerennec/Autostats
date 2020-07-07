@@ -7,7 +7,11 @@
 propensity(DF, y, regression = FALSE)
 }
 \arguments{
-\item{y}{}
+\item{DF}{dataframe}
+
+\item{y}{character}
+
+\item{regression}{logical}
 }
 \value{
 

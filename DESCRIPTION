@@ -1,20 +1,21 @@
 Package: autostats
 Title: medical statistics with table 1, linear and logistic regressions
-Version: 0.0.1.13
+Version: 0.0.1.14
 Authors@R: 
-    person(given = "Tanguy",
+   c(person(given = "Tanguy",
            family = "Perennec",
-           role = c("aut", "cre"),
-           email = "perennec.tanguy@gmail.com")
-        person(given = "Mathieu",
+           role = c("aut","cre"),
+           email = "perennec.tanguy@gmail.com"),
+    person(given = "Mathieu",
            family = "Wargny",
-           role = c("aut"))
+           role = c("aut")))
 Description: The package is able to performs basic statistics with a complete table 1. Logistic regression can be performed if a factor is provided. 
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.0
+Depends: R (>= 2.10)
 Suggests: 
     knitr,
     rmarkdown
@@ -24,8 +25,6 @@ Imports:
     stats,
     xlsx,
     dplyr,
-    MASS,
     ROCR,
     logistf,
-    here,
-    safeBinaryRegression
+    here

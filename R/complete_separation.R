@@ -13,35 +13,66 @@
 #' @export
 #'
 #' @examples
-check_dichotomous <- function(DF){
-   table(DF[,1],DF[,2])-> table
-   table[1,] ->table0
-   table[2,] ->table1
-   table0[table0 !=0] -> value0
-   table1[table1 !=0] -> value1
-   as.numeric(names(value0)) -> names_value0
-   as.numeric(names(value1)) -> names_value1
-   check <- FALSE
-   if(TRUE %in% c(is.na(names_value0),is.na(names_value1))){
-      cat("not all numerics")
-   }else{
-      names_value0[order(names_value0)] -> names_value0
-      names_value1[order(names_value1)] -> names_value1
-      if(max(names_value0) < min(names_value1)){
-         check <- TRUE
-         cat("\n\n",colnames(DF)[1]," is fully explicated by ",colnames(DF)[2]," :\n
-             x = (",trunc(min(names_value0)),":",trunc(min(names_value1)),"[     y = 0
-             x = (",trunc(min(names_value1)),":",(trunc(max(names_value1))+1),"[     y = 1")
+check_dichotomous <-
+   function(DF)
+   {
+
+      table(DF[, 1], DF[, 2]) -> table
+      table[1, ] -> table0
+      table[2, ] -> table1
+      table0[table0 != 0] -> value0
+      table1[table1 != 0] -> value1
+      as.numeric(names(value0)) -> names_value0
+      as.numeric(names(value1)) -> names_value1
+      check <- FALSE
+      if (TRUE %in% c(is.na(names_value0), is.na(names_value1))) {
+         cat("not all numerics")
+      } else{
+         names_value0[order(names_value0)] -> names_value0
+         names_value1[order(names_value1)] -> names_value1
+         if (max(names_value0) < min(names_value1)) {
+            check <- TRUE
+            cat(
+               "\n\n",
+               colnames(DF)[1],
+               " is fully explicated by ",
+               colnames(DF)[2],
+               " :\n
+             x = (",
+               trunc(min(names_value0)),
+               ":",
+               trunc(min(names_value1)),
+               "[     y = 0
+             x = (",
+               trunc(min(names_value1)),
+               ":",
+               (trunc(max(names_value1)) + 1),
+               "[     y = 1"
+            )
+         }
+         if (min(names_value0) > max(names_value1)) {
+            check <- TRUE
+            cat(
+               "\n\n",
+               colnames(DF)[1],
+               " is fully explicated by ",
+               colnames(DF)[2],
+               " :\n
+             x = (",
+               trunc(min(names_value1)),
+               ":",
+               trunc(min(names_value0)),
+               "[     y = 1
+             x = (",
+               trunc(min(names_value0)),
+               ":",
+               (trunc(max(names_value0)) + 1),
+               "[     y = 0"
+            )
+         }
       }
-      if(min(names_value0) > max(names_value1)){
-         check <- TRUE
-         cat("\n\n",colnames(DF)[1]," is fully explicated by ",colnames(DF)[2]," :\n
-             x = (",trunc(min(names_value1)),":",trunc(min(names_value0)),"[     y = 1
-             x = (",trunc(min(names_value0)),":",(trunc(max(names_value0))+1),"[     y = 0")
-      }
+      return(check)
    }
-   return(check)
-}
 
 #2)If it is quasi-complete separation, the easiest strategy is the "Do nothing" strategy. This is because that the maximum likelihood for other predictor variables are still valid. The drawback is that we don’t get any reasonable estimate for the variable X that actually predicts the outcome variable effectively.  This strategy does not work well for the situation of complete separation.
 #Another simple strategy is to not include X in the model. The problem is that this leads to biased estimates for the other predictor variables in the model. Thus, this is not a recommended strategy.
@@ -55,44 +86,40 @@ check_dichotomous <- function(DF){
 ###################
 #  CHOICES
 ###################
-transform_sepration <- function(DF){
-
+transform_sepration <- function(DF,y) {
    var <- colnames(DF)[2]
 
-   check_dichotomous<- check_dichotomous(DF)
-   dicho_msg <- ifelse(check_dichotomous,paste0("(could be done if ",var,"is indeed a dichotomous variation of ",y,")"),"(not advised)")
+   check_dichotomous <- check_dichotomous(DF)
+   dicho_msg <-
+      ifelse(
+         check_dichotomous,
+         paste0(
+            "(could be done if ",
+            var,
+            "is indeed a dichotomous variation of ",
+            y,
+            ")"
+         ),
+         "(not advised)"
+      )
 
-   cat("
-   What method should be applied to",var," ?
+   cat(
+      "
+   What method should be applied to",
+      var,
+      " ?
     1. Omission from the model.
     2. Changing to a different type of model.
     3. Use of an ad hoc adjustment (data manipulation).
     4. Exact logistic regression [13].
-    5. Standard analysis with 􏰀ˆNV",var,"et to a ‘high’ value (for example, the value of 􏰀ˆNV ",var," that iteration at which the log-likelihood changed by less than 10−6).")#
+    5. Standard analysis with betaˆNV",
+      var,
+      "et to a ‘high’ value (for example, the value of 􏰀ˆNV ",
+      var,
+      " that iteration at which the log-likelihood changed by less than 10−6)."
+   )#
    choice = 0
-   while(!(choice %in% c(1,2,3,4,5))){
+   while (!(choice %in% c(1, 2, 3, 4, 5))) {
       choice <- readline("Choice ? (1,2,3,4,5)       ")
    }
 }
-
-
-
-##############
-#EXEMPLES
-##############
-
-y <- c(0,0,0,0,1,1,1,1)
-y <- sort(y,decreasing = T)
-x <- c(1,2,3,3,5,6,10,11)
-source("R/logit.R")
-as.data.frame(cbind(y,x))-> DF
-logit(DF)
-
-check_dichotomous(DF)
-
-
-
-var <- DF$x
-transform_sepration(var)
-
-

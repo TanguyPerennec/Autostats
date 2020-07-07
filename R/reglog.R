@@ -2,31 +2,29 @@
 #'
 #' @description reglog is used to make logistic regression and gives one matrix with variables, odds-ratios, confidence intervals and p-values of univariate and multivariate models.
 #'
-#' @usage reglog <- function(DF,y,explicatives,...)
+#'
 #'
 #' @param DF dataframe, matrix or tibble that contains all explicatives variables and the variable to explain.
 #' @param y character : variable to explain.
 #' @param explicatives character vector : variables that should explain y in the logistic regression. Takes all columns but y from the dataframe if kept empty.
 #' @param method the method to be used to select variables in the multivariate model.The default method is the backward elimination. See details for more informations.
-#' @param ... Other arguments that can be passed to reglog. See 'details' for more informations.
-#'
-#' @details Method used to select the variables in the multivariate model can be set it the "method" parameter.
-#'  "backward" elimination is the default technique : the least significant effect that does not meet the
-#'  level "alpha" for staying in the model is removed. The process is repeated until no other effect in the
-#'  model meets the specified level for removal. \n In "forward" selection, the p-value is computed for each effect
-#'  not in the model and examines the largest of these statistics. If it is significant at entry level "alpha",
-#'  the corresponding effect is added to the model.Once an effect is entered in the model, it is never removed
-#'  from the model. The process is repeated until none of the remaining effects meet the specified level for entry.
-#'
 #' @param alpha num : significance threeshold used to delete non-significant variables in the multivariate model.
 #' @param verbose logical : if TRUE, explainations are displayed in the console while running the function.
 #' @param min_multivariate num : the minimum number of variables that should be kept in the multivariate model. If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.
 #' @param alpha_max num : maximum threeshold used to select the minimum multivariate variables wanted.
 #' @param method
 #' @param round num : number of digits to display in the final table.
+#' @param rowstimevariable : minimum number of times row has to be bigger than variables
+#' @param confirmation logical : ask confirmation before doing a transformation
 #'
-#' @details
-#' @details
+#' @details Method used to select the variables in the multivariate model can be set it the "method" parameter.
+#'  "backward" elimination is the default technique : the least significant effect that does not meet the
+#'  level "alpha" for staying in the model is removed. The process is repeated until no other effect in the
+#'  model meets the specified level for removal. In "forward" selection, the p-value is computed for each effect
+#'  not in the model and examines the largest of these statistics. If it is significant at entry level "alpha",
+#'  the corresponding effect is added to the model.Once an effect is entered in the model, it is never removed
+#'  from the model. The process is repeated until none of the remaining effects meet the specified level for entry.
+#'
 #'
 #' @return reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model
 #' @export
@@ -39,7 +37,6 @@
 #'
 #' @references Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17
 #' @references Heinze G, Schemper M. A solution to the problem of separation in logistic regression. Stat Med. 2002;21(16):2409-2419. doi:10.1002/sim.1047
-#' @examples
 reglog <- function(DF,
                   y,
                   explicatives = colnames(DF)[colnames(DF) != y],
@@ -287,8 +284,6 @@ reglog <- function(DF,
    +-----------------------------+\n
 ")
 
-   explicatives_multi <- NULL
-   alpha_multi <- alpha
    dev_matrix <- dev_matrix[order(dev_matrix[,2])] #variable avec le moins de déviance
 
    if (verbose)

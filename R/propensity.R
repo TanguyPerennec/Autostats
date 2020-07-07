@@ -1,7 +1,8 @@
 #' Propensity score
 #'
-#' @param DF
-#' @param y
+#' @param DF dataframe
+#' @param y character
+#' @param regression logical
 #'
 #' @return
 #' @export

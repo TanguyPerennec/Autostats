@@ -12,7 +12,6 @@
 #' @export
 #' @import stringr
 #' @import stats
-#' @examples
 table1 <- function(DF,
             y,
             ynames = NULL,
