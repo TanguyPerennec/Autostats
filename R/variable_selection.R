@@ -1,7 +1,7 @@
 #match.arg
 #missing
 
-dropterm <- function(object, scale = 0, test = c("none", "Chisq", "F"), k = 2, sorted = FALSE, verbose = FALSE, ...){
+dropterm <- function(object, scale = 0, test = c("none", "Chisq", "F"), k = 2, sorted = FALSE, verbose = FALSE){
       x <- model.matrix(object)
       n <- nrow(x)
       asgn <- attr(x, "assign")
@@ -18,20 +18,17 @@ dropterm <- function(object, scale = 0, test = c("none", "Chisq", "F"), k = 2, s
       wt <- object$prior.weights
       for(i in seq_len(ns)) {
          if(verbose) cat("\rtrying .......", scope[i])
-
          ii <- seq_along(asgn)[asgn == ndrop[i]]
          jj <- setdiff(seq(ncol(x)), ii)
-         z <-  glm.fit(x[, jj, drop = FALSE], y, wt, offset=object$offset,
-                       family=object$family, control=object$control)
+         z <-  glm.fit(x[, jj, drop = FALSE], y, wt, offset=object$offset,family="binomial", control=object$control)
          dfs[i] <- z$rank
          dev[i] <- z$deviance
       }
       scope <- c("<none>", scope)
       dfs <- c(object$rank, dfs)
       dev <- c(chisq, dev)
-      dispersion <- if (is.null(scale) || scale == 0)
-         summary(object, dispersion = NULL)$dispersion
-      else scale
+      dispersion <-
+         if (is.null(scale) || scale == 0){summary(object, dispersion = NULL)$dispersion}else{scale}
       fam <- object$family$family
       loglik <-
          if(fam == "gaussian") {
@@ -72,8 +69,7 @@ dropterm <- function(object, scale = 0, test = c("none", "Chisq", "F"), k = 2, s
       }
       aod <- aod[o, ]
       head <- c("Single term deletions", "\nModel:", deparse(formula(object)))
-      if(scale > 0)
-         head <- c(head, paste("\nscale: ", format(scale), "\n"))
+      if(scale > 0) head <- c(head, paste("\nscale: ", format(scale), "\n"))
       class(aod) <- c("anova", "data.frame")
       attr(aod, "heading") <- head
       aod

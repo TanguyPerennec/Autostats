@@ -4,14 +4,31 @@ multivariate_selection <-
             explicatives = colnames(DF)[colnames(DF) != y],
             principal_factor=NULL,
             method = "backward",
-            criteria = "Wald",
+            criteria = "deviance",
             check_interactions = TRUE,
-            alpha = 0.05)
+            alpha = 0.05,
+            verbose=TRUE)
    {
+
+
+      var_to_formula <- function(vars, y)
+      {
+         formule <- vars[1]
+         for (t in seq(vars[-1]))
+         {
+            formule <- paste0(formule,"+", vars[t])
+         }
+         formule <- paste0(y, "~", formule)
+         formule <- formula(formule)
+         return(formule)
+      }
+
+
       # MODEL 0
       if ("forward" %in% method)
       {
-         model0 <- glm(DF[,y] ~ 1,family = "binomial") # NULL MODEL
+         formule <- formula(paste0(y,"~",1))
+         model0 <- glm(formule,family = "binomial",data = DF) # NULL MODEL
       } else if ("backward" %in% method)
          model0 <- logit(DF[, c(y, colnames(DF)[colnames(DF) != y])]) # FULL MODEL
 
@@ -34,14 +51,17 @@ multivariate_selection <-
             models1$deviance[j] <- model1$deviance
          }
          principal_factors <- models1[order(models1$deviance),,drop = FALSE]
-         principal_factor <-  rownames(principal_factors)[1]
+         principal_factor <- rownames(principal_factors)[1]
       }
+      if (verbose)
+         cat("\nle premier facteur intégré est <",principal_factor,">\ncar appartient au meilleur modèle avec 0 ou 1 variable\n")
       #####
 
 
       explicatives_remains <- explicatives[explicatives != principal_factor]
 
-      model1 <- glm(DF[ ,y]~DF[, principal_factor], family = "binomial")
+      formule <- formula(paste0(y,"~",principal_factor))
+      model1 <- glm(formule,data = DF, family = "binomial")
 
 
       # Determination of interactions
@@ -74,30 +94,39 @@ multivariate_selection <-
       #ERREUR
       #####
       source("R/formulation.R")
-      if (length(interactives_remains) > 0)
+      if (check_interactions)
       {
-         for (i in seq(interactives_remains))
+         if (length(interactives_remains) > 0)
          {
-         formule <- formulation(DF[,c(y,explicatives_remains)])
             for (i in seq(interactives_remains))
             {
-               interactive_formule <- paste0("+",interactives_remains[i])
-            }
-            newterms <- interactive_formule
-            formule <- update(formule, ~ . newterms)
-            model0 <- glm(formule, data = DF, family = "binomial")
-            pvals <- summary(model0)$coefficients[,4]
+               formule <- formulation(DF[,c(y,explicatives_remains)])
+               for (i in seq(interactives_remains))
+               {
+                  interactive_formule <-
+                     ifelse(i == 1, interactives_remains[i], paste0("+", interactives_remains[i]))
+               }
+               newterms <- interactive_formule
+               formule <- update(formule, ~ . + newterms)
+               model0 <- glm(formule, data = DF, family = "binomial")
+               pvals <- summary(model0)$coefficients[,4]
 
-            #Elimination one by one of all interaction variable based on PVALUE
-            interact_pval <- pvals[match(interactives_remains,names(pvals))]
-            interact_pval <- interact_pval[order(-interact_pval)]
-            if (interact_pval[1] > alpha)
-            {
-               interactives_remains <- interactives_remains[interactives_remains != names(interact_pval)]
+               #Elimination one by one of all interaction variable based on PVALUE
+               interact_pval <- pvals[match(interactives_remains,names(pvals))]
+               interact_pval <- interact_pval[order(-interact_pval)]
+               if (interact_pval[1] > alpha)
+               {
+                  interactives_remains <- interactives_remains[interactives_remains != names(interact_pval)]
+               }
             }
          }
       }
       #####
+
+
+      vars_remainings <- explicatives
+      formule <- formulation(DF[,c(y,explicatives)])
+      last_model <- glm(formule, data = DF, family = "binomial")
 
 
       #Backward selection for all
@@ -107,90 +136,62 @@ multivariate_selection <-
       #nous arrêtons lorsque toutes les variables sont retirées du modèle ou lorsque la valeur p est
       #plus petite qu’une valeur seuil.
 
-
-      #####
-
-
-
-
-
-
-   }
-
-
-
- vars_remainings <- explicatives
-
-
-
-#####
-#MODEL1
-   model1 <- logit(DF_multi1)
-#####
-
-
-#####
-#MODEL 2
-   newvar <- vars_remainings[i]
-   DF_multi2 <- DF[,colnames(DF_multi1,newvar)]
-   model2 <- logit(DF_multi2)
-#####
-
-#####
-#COMPARISON OF MODEL 1 AND MODEL 2
-## CRITERIA
-# 1. significance criteria =to compare the log-likelihoods of 2 nested models :
-      # A. Wald test : only if there is 1 difference
-      # B. Score test : only if there is 1 difference
-      # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested => only valable way
-# 2. information criteria
-
-
-   # Test entre 2 models
-   models_test <- function(model,
-                           y,
-                           var_diff,
-                           critere_choix = "deviance")
-   {
-      if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
-         stop("criteria is no on the list")
-
-      if (critere_choix == "deviance")
+      # Test 2 models // return p-val of the test corresponding to "critere
+      ## CRITERIA
+      # 1. significance criteria =to compare the log-likelihoods of 2 nested models :
+         # A. Wald test : only if there is 1 difference
+         # B. Score test : only if there is 1 difference
+         # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested => only valable way
+      # 2. information criteria
+      models_test <- function(model,
+                              y,
+                              var_diff,
+                              critere_choix = "deviance")
       {
-         formule_diff_terms <- attr(model$terms, "term.labels")
-         formule_diff_terms <- formule_diff_terms[formule_diff_terms != var_diff]
-         formule_diff <- paste0(y, "~", formule_diff_terms[1])
-         for (t in seq(formule_diff_terms[-1]))
+         if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
+            stop("criteria is no on the list")
+
+         if (critere_choix == "deviance")
          {
-            formule_diff <- paste0(formule_diff, "+", formule_diff_terms[t])
+            formule_diff_terms <- attr(model$terms, "term.labels")
+            formule_diff_terms <- formule_diff_terms[formule_diff_terms != var_diff]
+            formule_diff <- var_to_formula(formule_diff_terms,y)
+            model2 <- glm(formule_diff, data = DF, family = "binomial")
+            anova_test <- anova(model, model2, test = "LRT")
+            pval <- anova_test$Pr[nrow(anova_test)]
          }
-         formule_diff <- formula(formule_diff)
-         model2 <- glm(formule_diff, data = DF, family = "binomial")
-         anova_test <- anova(model, model2, test = "LRT")
-         pval <- anova_test$Pr[nrow(anova_test)]
+         return(pval)
       }
-      return(pval)
-   }
 
 
-
-
-
-
-      if (logistf::is.logistf(model))
+      while (length(vars_remainings) > 0)
+      {
+         model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
+         for (i in seq(vars_remainings))
          {
-         deviance <- -2 * (model$loglik[1])
-         } else{
-         deviance <- model$deviance
+            pval <- models_test(last_model, y, var_diff = vars_remainings[i])
+            model_test_df[i,] <- c(vars_remainings[i],pval)
          }
-      return(deviance)
-      #AIC
-      #BIC
+
+         model_test_df[order(model_test_df[,2]),][1,] -> best_var
+         if (best_var[2] < alpha)
+         {
+            if (verbose)
+               cat("\nThe best model exlude <",best_var[1], "> (with likelihood ratio test : p =",round(as.numeric(best_var[2]),3),"), so this variable is now excluded")
+            vars_remainings <- vars_remainings[vars_remainings != best_var[1]]
+         }
+         else
+         {
+            if (verbose)
+               cat("\nThe best model do not exlude any variable of the variables remaining (with risk",alpha,"):",vars_remainings)
+            break
+         }
+      }
+
+      return(vars_remainings)
+      #####
    }
 
-
-
-
 }
 
 
@@ -203,29 +204,3 @@ multivariate_selection <-
 
 
 
-
-complete_separation <- FALSE
-complete_separation <- tryCatch(glm(DF_uni, family = binomial, data = DF_uni,separation="find") -> mod_uni,
-                                error = function(e) {# if "fitted probabilities numerically 0 or 1 occurred"
-                                   msg <- paste0(var_uni," is causing perfect separation")
-                                   msg
-                                   firth <- TRUE
-                                   return(firth)
-                                },
-                                finally={}
-)
-complete_separation -> firth
-Clogg = FALSE
-
-if(complete_separation){
-   # If there is a perfect separation : (Heinz et Al)
-   #1. Omission of NV from the model : provides no information about the effect of this unusually strong and therefore important risk factor and furthermore does not allow adjusting effects of the other risk factors for the effect of NV. Therefore, this option is totally inappropriate.
-   #2. Changing to a different type of model : Models whose parameters have di􏰃erent interpretations that are not risk-related (option 2) may be less appealing.
-   #3. Use of an ad hoc adjustment (data manipulation) : While simple adjustments of cell frequencies can have undesirable properties (Agresti and Yang), Clogg et al. pursued a more elaborate approach: creat p = sum(yi/n) with y=(0,1) ; add pk/g artifficial responses and (1−p)k/g artifficial non-responses to each of the g groups of distinct risk factor patterns, and then to do a standard analysis on the augmented data set. k is the number of parameters to estimate
-   #4. Exact logistic regression : permits replacement of the unsuitable maximum likelihood estimate by a median unbiased estimate [4]: let xir denote the value of the rth risk factor for individual i (16i6n; 26r6k) and let xi1=1 for all i. Then the median unbiased estimate of a parameter 􏰁r as well as corresponding inference are based on the exact null distribution of the su􏰂cient statistic Tr = 􏰊ni=1 yixir of 􏰁r, conditional on the observed values of the other su􏰂cient statistics Tr′ ; r′ ̸= r. An e􏰂cient algorithm is available to evaluate these conditional distributions [16] which should contain a su􏰂cient number of elements. This requirement may be violated with a single continuous risk factor but also with multiple dichotomous risk factors. In the endometrial cancer study we cannot apply exact logistic regression because there are two continuous risk factors in the model leading to degenerate distributions of all su􏰂cient stat 5) im
-   #5. Standard analysis with BettaˆNV set to a ‘high’ value (for example, the value of BettaˆNV of that iteration at which the log-likelihood changed by less than 10−6).permits replacement of the unsuitable maximum likelihood estimate by a median unbiased estimate [4]: let xir denote the value of the rth risk factor for individual i (16i6n; 26r6k) and let xi1=1 for all i. Then the median unbiased estimate of a parameter 􏰁r as well as corresponding inference are based on the exact null distribution of the su􏰂cient statistic Tr = 􏰊ni=1 yixir of 􏰁r, conditional on the observed values of the other su􏰂cient statistics Tr′ ; r′ ̸= r. An e􏰂cient algorithm is available to evaluate these conditional distributions [16] which should contain a su􏰂cient number of elements. This requirement may be violated with a single continuous risk factor but also with multiple dichotomous risk factors. In the endometrial cancer study we cannot apply exact logistic regression because there are two continuous risk factors in the model leading to degenerate distributions of all su􏰂cient statistics.permits replacement of the unsuitable maximum likelihood estimate by a median unbiased estimate [4]: let xir denote the value of the rth risk factor for individual i (16i6n; 26r6k) and let xi1=1 for all i. Then the median unbiased estimate of a parameter 􏰁r as well as corresponding inference are based on the exact null distribution of the su􏰂cient statistic Tr = 􏰊ni=1 yixir of 􏰁r, conditional on the observed values of the other su􏰂cient statistics Tr′ ; r′ ̸= r. An e􏰂cient algorithm is available to evaluate these conditional distributions [16] which should contain a su􏰂cient number of elements. This requirement may be violated with a single continuous risk factor but also with multiple dichotomous risk factors. In the endometrial cancer study we cannot apply exact logistic regression because there are two continuous risk factors in the model leading to degenerate distributions of all su􏰂cient statistics.
-   #6. Firth's method
-   if(firth) logistf::logistf(DF[,y]~DF[,var_uni], data = DF_uni, pl = FALSE, firth = TRUE) -> mod_uni
-   vector_firth <- c(vector_firth,var_uni)
-   # 7. re-cast the model
-}

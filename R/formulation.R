@@ -17,7 +17,7 @@ formulation <- function(object,y=NULL){
 
    # 1. Getting y
    #############################################
-   if(is.object(y)){
+   if(is.null(y)){
       if(is.data.frame(object) || is.matrix(object) || is.tbl(object)){
          y <- colnames(object)[1]
       }else{object <- object[1]}
