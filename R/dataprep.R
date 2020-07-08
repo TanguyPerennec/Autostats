@@ -290,7 +290,7 @@ data_prep_complete <-
    DF[,y] <- tobinary(DF[,y])
 
    # get rid of NAs
-   DF <- NA_rm_for_glm(DF,y,keep=FALSE)
+   DF <- NA_rm_for_glm(DF,y,keep = FALSE)
 
    # Clean constant variables
    DF <- checkforfactor(DF)

@@ -4,9 +4,13 @@
 \alias{check_dichotomous}
 \title{Check dichotomous distribution for one variable}
 \usage{
-check_dichotomous(DF)
+check_dichotomous(var, y, DF)
 }
 \arguments{
+\item{var}{: the variable}
+
+\item{y}{: the variable to explain}
+
 \item{DF}{: a dataframe}
 }
 \value{
