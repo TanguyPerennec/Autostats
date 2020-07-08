@@ -35,46 +35,45 @@ logit <- function(DF,y = colnames(DF)[1], response = FALSE){
    ##################################################
    error_glm <- TRUE
    response <- FALSE
+   firth_method <- FALSE
+
    while (error_glm)
    {
       tryCatch(
       {
+         error_glm <- FALSE
          model <- glm(formule, data = DF, family = "binomial")
       },
       error = function(er)
       {
+         error_glm <- TRUE
          if (grepl("separation", er))
          {
             cat("\nComplete or quasi complete separation occured for : ")
             for (var in colnames(DF)[-1])
             {
-               if (grepl(var, er))
-               {
-                  cat("\n- ", var)
-                  DF <- complete_separation(var, y, DF, continue = response)
-                  response <- DF$continue[1]
-                  DF$continue <- NULL
-
-                  if (DF$method == "Firth")
-                  {
-                     DF$method <- NULL
-                     logistf::logistf(formule, data = DF)
-                     error_glm <- FALSE
-                  } else{
-                     DF$method <- NULL
-                  }
-               }
+               cat("\n- ", var)
             }
-         }else {
+            DF <- complete_separation(var, y, DF, continue = response)
+            response <- DF$continue[1]
+            DF$continue <- NULL
+            if (DF$method[1] == "firth")
+            {
+               cat("\n logistic regression using Firth's Bias-Reduced Logistic regression has been performed\n")
+               firth_method = TRUE
+               error_glm <- FALSE
+            }
+            DF$method <- NULL
+         }else
+         {
             stop(er)
          }
       })
    }
 
-
       #####
 
-
+   logistf::logistf(formule, data = DF,firth = firth_method) -> model
    return(model)
 }
 

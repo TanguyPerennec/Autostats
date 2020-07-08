@@ -144,8 +144,9 @@ NA_rm_for_glm <-
                explicatives <- explicatives[explicatives != var]
             }else
             {
-               summary(logit(DF_uni))$coefficients -> model_coeffs
-               if (!FALSE %in% (model_coeffs[,4] > floor_pval))
+               model <- stats::glm(formula = DF_uni[,y]~DF[,var],family = "binomial")
+               p_valanova <- anova(model,formula(DF_uni[,y]~1),test = "Chisq")$Pr[2]
+               if (p_valanova > floor_pval)
                {#if all pvals are > 0.5
                   explicatives <- explicatives[explicatives != var]
                   if (verbose)
@@ -288,6 +289,8 @@ data_prep_complete <-
 
    # Data prep of y
    DF[,y] <- tobinary(DF[,y])
+
+
 
    # get rid of NAs
    DF <- NA_rm_for_glm(DF,y,keep = FALSE)
