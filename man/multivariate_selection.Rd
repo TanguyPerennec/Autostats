@@ -2,16 +2,17 @@
 % Please edit documentation in R/multivariate_selection.R
 \name{multivariate_selection}
 \alias{multivariate_selection}
-\title{Title}
+\title{Multivariate selection}
 \usage{
 multivariate_selection(
   DF,
   y,
   explicatives = colnames(DF)[colnames(DF) != y],
-  principal_factor = NULL,
+  keep = FALSE,
+  principal_factor = FALSE,
   method = "backward",
   criteria = "deviance",
-  check_interactions = TRUE,
+  check_interactions = FALSE,
   alpha = 0.05,
   verbose = TRUE
 )
@@ -21,9 +22,11 @@ multivariate_selection(
 
 \item{y}{character}
 
-\item{explicatives}{vector of character}
+\item{explicatives}{vector of character : variables to be selected in the multivariate model}
 
-\item{principal_factor}{(optional)}
+\item{keep}{character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.}
+
+\item{principal_factor}{(optional) : principal criteria to explain y. First variable to be selected and won't be removed from selection.}
 
 \item{method}{character}
 
@@ -39,5 +42,5 @@ multivariate_selection(
 
 }
 \description{
-Title
+Multivariate selection
 }

@@ -8,6 +8,7 @@ reglog(
   DF,
   y,
   explicatives = colnames(DF)[colnames(DF) != y],
+  keep = FALSE,
   alpha = 0.05,
   verbose = TRUE,
   min_multivariate = 2,
@@ -25,6 +26,8 @@ reglog(
 \item{y}{character : variable to explain.}
 
 \item{explicatives}{character vector : variables that should explain y in the logistic regression. Takes all columns but y from the dataframe if kept empty.}
+
+\item{keep}{character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.}
 
 \item{alpha}{num : significance threeshold used to delete non-significant variables in the multivariate model.}
 

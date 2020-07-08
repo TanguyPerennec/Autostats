@@ -116,23 +116,24 @@ NA_rm_for_glm <-
             min_explicatives = 10,
             floor_pval = 0.5,
             verbose = T,
-            method = c("lessNA", "significance"))
+            method_NA = c("lessNA", "significance"),
+            keep = FALSE)
 {
    DF <- as.data.frame(DF)
    explicatives1 <- colnames(DF)[colnames(DF) != y]
    DF <- DF[!is.na(DF[,y]),]
    DF_complete <- DF[complete.cases(DF),]
-   DF_incomplete <- DF[!complete.cases(DF),]
    explicatives <- colnames(DF)[colnames(DF) != y]
 
    if (nrow(DF_complete) < rowlimit_factor * length(DF_complete))
    {
 
       nb_NA <- apply(DF[, explicatives], 2, function(x) sum(is.na(x))) #nb NA by columns
+      nb_NA <- nb_NA[!(keep %in% names(nb_NA))]
       nb_NA <- nb_NA[order(-nb_NA)]
       i = 1
 
-      if ("significance" %in% method)
+      if ("significance" %in% method_NA)
       {
          for (var in names(nb_NA))
          {
@@ -157,11 +158,12 @@ NA_rm_for_glm <-
       DF <- DF[,c(y,explicatives)]
       DF_complete <- DF[complete.cases(DF),]
 
-      if ("lessNA" %in% method)
+      if ("lessNA" %in% method_NA)
       {
          while (nrow(DF_complete) < rowlimit_factor * length(DF_complete) & (length(explicatives) > min_explicatives) & i < length(nb_NA))
          {
             nb_NA <- apply(DF[, explicatives], 2, function(x) sum(is.na(x))) #nb NA by columns
+            nb_NA <- nb_NA[!(keep %in% names(nb_NA))]
             nb_NA <- nb_NA[order(-nb_NA)]
             nb_NA <- nb_NA[nb_NA > 0]
             explicatives <- explicatives[explicatives != names(nb_NA[1])]
@@ -239,11 +241,11 @@ checkforfactor <-
 
 format_data <-
    function(DF,
-            method=NULL)
+            type=NULL)
 {
    as.data.frame(DF) -> DF
 
-   if ("plain" %in% method)
+   if ("plain" %in% type)
    {
       for (i in 1:length(DF))
       {
@@ -270,7 +272,11 @@ format_data <-
 
 
 data_prep_complete <-
-   function(DF, y, verbose = TRUE)
+   function(DF,
+            y,
+            verbose = TRUE,
+            keep = FALSE
+   )
 {
    verbose = T
 
@@ -284,7 +290,7 @@ data_prep_complete <-
    DF[,y] <- tobinary(DF[,y])
 
    # get rid of NAs
-   DF <- NA_rm_for_glm(DF,y)
+   DF <- NA_rm_for_glm(DF,y,keep=FALSE)
 
    # Clean constant variables
    DF <- checkforfactor(DF)

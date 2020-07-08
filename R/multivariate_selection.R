@@ -1,14 +1,15 @@
-#' Title
+#' Multivariate selection
 #'
 #' @param DF dataframe
 #' @param y character
-#' @param explicatives vector of character
-#' @param principal_factor (optional)
+#' @param explicatives vector of character : variables to be selected in the multivariate model
+#' @param principal_factor (optional) : principal criteria to explain y. First variable to be selected and won't be removed from selection.
 #' @param method character
 #' @param criteria character
 #' @param check_interactions logical
 #' @param alpha num
 #' @param verbose logical
+#' @param keep character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.
 #'
 #' @return
 #' @export
@@ -18,19 +19,23 @@ multivariate_selection <-
    function(DF,
             y,
             explicatives = colnames(DF)[colnames(DF) != y],
-            principal_factor=NULL,
+            keep=FALSE,
+            principal_factor=FALSE,
             method = "backward",
             criteria = "deviance",
-            check_interactions = TRUE,
+            check_interactions = FALSE,
             alpha = 0.05,
             verbose=TRUE)
    {
 
 
+
+      source("R/formulation.R")
+
       var_to_formula <- function(vars, y)
       {
          formule <- vars[1]
-         for (t in seq(vars[-1]))
+         for (t in 2:length(vars))
          {
             formule <- paste0(formule,"+", vars[t])
          }
@@ -51,37 +56,53 @@ multivariate_selection <-
 
    explicatives_multi_test <- c("null model",explicatives)
 
+
+
+
+
+   # BACKWARD MODEL
+   ##############################
    if ("backward" %in% method)
    {
-      #Determination of the principal factor : wether specified or the variable for which the deviance is the smallest
-      #####
-      if (is.null(principal_factor)) {
+
+      #Determination of the principal factor : specified or determined by the variable for which the deviance is the smallest
+      if (!is.logical(principal_factor))
+      {
+         if (!(principal_factor %in% explicatives))
+            stop("the principal factor must be in 'explicatives'")
+         if (verbose)
+            cat("\nFirst variable set is <",principal_factor,">\n because it is the principal factor specifed")
+         principal_factor -> keep[length(keep) + 1]
+      }
+      if (is.logical(principal_factor))
+      {
          # Determination of univariate p-val for all elements
          models1 <- data.frame(row.names = explicatives_multi_test)
          for (j in seq(explicatives_multi_test))
          {
             if (j == 1)
+            {
                model1 <- glm(DF[ ,y]~1, family = "binomial")
-            else
+            } else
+            {
                model1 <- glm(DF[ ,y]~DF[, explicatives_multi_test[j]], family = "binomial")
+            }
             models1$deviance[j] <- model1$deviance
          }
          principal_factors <- models1[order(models1$deviance),,drop = FALSE]
          principal_factor <- rownames(principal_factors)[1]
+         if (verbose)
+            cat("\nFirst variable set is <",principal_factor,">\n because the model with this variable is better than all other models with 0 (null model) or 1 variable\n")
+
       }
-      if (verbose)
-         cat("\nle premier facteur intégré est <",principal_factor,">\ncar appartient au meilleur modèle avec 0 ou 1 variable\n")
-      #####
 
 
       explicatives_remains <- explicatives[explicatives != principal_factor]
-
       formule <- formula(paste0(y,"~",principal_factor))
       model1 <- glm(formule,data = DF, family = "binomial")
 
 
       # Determination of interactions
-      #####
       if (check_interactions)
       {
          interact_table <-  data.frame(row.names = explicatives_remains)
@@ -104,12 +125,9 @@ multivariate_selection <-
          }
          interactives_remains <- signif_interact_table
       }
-      #####
+
 
       # Backward selection for interaction
-      #ERREUR
-      #####
-      source("R/formulation.R")
       if (check_interactions)
       {
          if (length(interactives_remains) > 0)
@@ -137,7 +155,6 @@ multivariate_selection <-
             }
          }
       }
-      #####
 
 
       vars_remainings <- explicatives
@@ -145,7 +162,7 @@ multivariate_selection <-
       last_model <- glm(formule, data = DF, family = "binomial")
 
 
-      #Backward selection for all
+      #Backward selection for all variables
       #####
       #Si la méthode descendante utilise un test de déviance, nous éliminons ensuite la variable
       #Xj dont la valeur p associée à la statistique de test de déviance est la plus grande. Nous
@@ -154,7 +171,7 @@ multivariate_selection <-
 
       # Test 2 models // return p-val of the test corresponding to "critere
       ## CRITERIA
-      # 1. significance criteria =to compare the log-likelihoods of 2 nested models :
+      # 1. significance criteria =to compare the log-likelihoods of 2 nested models : the variable with the
          # A. Wald test : only if there is 1 difference
          # B. Score test : only if there is 1 difference
          # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested => only valable way
@@ -165,7 +182,7 @@ multivariate_selection <-
                               critere_choix = "deviance")
       {
          if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
-            stop("criteria is no on the list")
+            stop("criteria is not on the list")
 
          if (critere_choix == "deviance")
          {
@@ -180,21 +197,34 @@ multivariate_selection <-
       }
 
 
+
+
+
       while (length(vars_remainings) > 0)
       {
          model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
          for (i in seq(vars_remainings))
          {
-            pval <- models_test(last_model, y, var_diff = vars_remainings[i])
+            pval <- models_test(model = last_model, y, var_diff = vars_remainings[i])
             model_test_df[i,] <- c(vars_remainings[i],pval)
          }
+         model_test_df <- as.data.frame(model_test_df)
+         colnames(model_test_df) <- c("name","pval")
+         model_test_df[order(-model_test_df$pval),] -> model_test_df
+         model_test_df$pval <- as.numeric(as.character(model_test_df$pval))
+         model_test_df$name <- as.character(model_test_df$name)
 
-         model_test_df[order(model_test_df[,2]),][1,] -> best_var
-         if (best_var[2] < alpha)
+         k <- 1
+         while (model_test_df[k,1] %in% keep)
+         {
+            k <- k + 1
+         }
+
+         if (model_test_df[k,2] > alpha)
          {
             if (verbose)
-               cat("\nThe best model exlude <",best_var[1], "> (with likelihood ratio test : p =",round(as.numeric(best_var[2]),3),"), so this variable is now excluded")
-            vars_remainings <- vars_remainings[vars_remainings != best_var[1]]
+               cat("\nThe best model exlude <",model_test_df[k,1], "> (with likelihood ratio test : p =",round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+            vars_remainings <- vars_remainings[vars_remainings != model_test_df[k,1]]
          }
          else
          {

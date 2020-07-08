@@ -17,6 +17,7 @@
 #' @param rowstimevariable : minimum number of times row has to be bigger than variables
 #' @param confirmation logical : ask confirmation before doing a transformation
 #' @param exit character or character vector specifying the exit of the fonction : results in the console or saved in excel file
+#' @param keep character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.
 #'
 #' @details Method used to select the variables in the multivariate model can be set it the "method" parameter.
 #'  "backward" elimination is the default technique : the least significant effect that does not meet the
@@ -38,6 +39,7 @@
 reglog <- function(DF,
                   y,
                   explicatives = colnames(DF)[colnames(DF) != y],
+                  keep = FALSE,
                   alpha = 0.05,
                   verbose = TRUE,
                   min_multivariate=2,
@@ -53,6 +55,7 @@ reglog <- function(DF,
    source("R/dataprep.R")
    source("R/multivariate_selection.R")
    source("R/logit.R")
+   source("R/multivariate_selection.R")
    #To ignore the warnings during usage
    options(warn = -1)
    options("getSymbols.warning4.0" = FALSE)
@@ -122,6 +125,16 @@ reglog <- function(DF,
 
    if (!is.logical(confirmation))
       stop("'confirmation' must be logical")
+
+
+   if (!is.logical(keep))
+   {
+      if (!is.character(keep) & !is.vector(keep))
+         stop("keep should be a vector of character or characters")
+      if (FALSE %in% (keep %in% explicatives))
+         stop("some of keep elements are not in 'explicatives'")
+   }
+
    ##################################################
 
 
@@ -142,7 +155,7 @@ reglog <- function(DF,
    +-----------------------------+\n
 ")
 
-   DF <- data_prep_complete(DF,y,verbose = T)
+   DF <- data_prep_complete(DF,y,verbose = TRUE,keep)
    explicatives <- colnames(DF)[colnames(DF) != y]
    ##################################################
 
@@ -153,7 +166,7 @@ reglog <- function(DF,
 
 
    ##################################################
-   #            2) UNIVARIATE MODEL                 #
+   #            2) UNIVARIATE MODELS                 #
    ##################################################
    if (verbose) cat(
 "\n
@@ -209,7 +222,7 @@ reglog <- function(DF,
       IC <- suppressMessages(confint(mod))
       IC_paste <- paste0("[", round(exp(IC[K + 1, 1]), round), ";", round(exp(IC[K + 1, 2]), round), "]")
       name <- ifelse(firth, names(mod$coefficients)[K + 1], rownames(summary(mod)$coefficients)[K + 1])
-      level_var <- str_split(name, ifelse(firth, "DF\\[, var_uni\\]", var), n = 2)[[1]][2]
+      level_var <- stringr::str_split(name, ifelse(firth, "DF\\[, var_uni\\]", var), n = 2)[[1]][2]
       name_var <- ifelse(level_var == "", var, paste0(var, "  (", level_var, ")"))
       ligne <- c(name_var, OR, IC_paste, pval, level_var)
       return(ligne)
@@ -289,11 +302,10 @@ reglog <- function(DF,
 
    if (verbose)
       cat("\nThe method used for variable selection is the ",method," method\n\n")
-
-   explicatives_remainings <- multivariate_selection(DF,y,explicatives, principal_factor = NULL,method = "backward",criteria = "deviance",check_interactions = FALSE,alpha = 0.05)
+   keep2 <- keep
+   explicatives_remainings <- multivariate_selection(DF,y,explicatives, principal_factor = FALSE,method = "backward",criteria = "deviance",check_interactions = FALSE,alpha = 0.05,keep = keep2)
 
    last_model <- logit(DF[,c(y,explicatives_remainings)])
-
 
 
 
@@ -305,7 +317,7 @@ reglog <- function(DF,
    ##################################################
    OR <- exp(summary(last_model)$coefficients[, 1])
    pval <- summary(last_model)$coefficients[, 4]
-   IC <- suppressMessages(confint(last_model))
+   try(IC <- suppressMessages(confint(last_model)))
    i <- 0
 
 
@@ -316,8 +328,8 @@ reglog <- function(DF,
       n_ligne <- match(OR_var, rownames(rslt))
       p <- round(pval[i + 1], round)
       p <- ifelse(p == 0, "<0.001", p)
-      IC_paste <- paste0("[", round(exp(IC[i + 1, 1]), round), ";", round(exp(IC[i + 1, 2]), round), "]")
-      rslt[n_ligne, 5:7] <- c(signif(OR[i + 1], round), IC_paste, p)
+      try(IC_paste <- paste0("[", round(exp(IC[i + 1, 1]), round), ";", round(exp(IC[i + 1, 2]), round), "]"))
+      try(rslt[n_ligne, 5:7] <- c(signif(OR[i + 1], round), IC_paste, p))
    }
 
    for (n in 1:length(rslt[-1, 4]))
@@ -343,5 +355,5 @@ reglog <- function(DF,
    }
    ##################################################
 
-      return(rslt)
+   return(rslt)
 }
