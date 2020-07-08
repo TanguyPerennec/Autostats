@@ -12,6 +12,7 @@ source("R/logit.R")
 tobinary <- function(col,
                      verbose = T)
 {
+   names(col) -> name
    levels_col <- levels(as.factor(col)) #get the levels of col (that should be 0 or 1)
 
    if (length(levels_col) != 2)
@@ -43,7 +44,7 @@ tobinary <- function(col,
       }
       if (verbose)
          cat(
-            names(col),
+            name,
             '\n has been changed to 0/1 factor with ',
             levels_col[1],
             ' = 0 and ',
@@ -144,7 +145,7 @@ NA_rm_for_glm <-
                explicatives <- explicatives[explicatives != var]
             }else
             {
-               model <- stats::glm(formula = DF_uni[,y]~DF[,var],family = "binomial")
+               model <- stats::glm(formula = DF_uni[,y]~DF_uni[,var],family = "binomial")
                p_valanova <- anova(model,formula(DF_uni[,y]~1),test = "Chisq")$Pr[2]
                if (p_valanova > floor_pval)
                {#if all pvals are > 0.5

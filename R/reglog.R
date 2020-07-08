@@ -56,6 +56,7 @@ reglog <- function(DF,
    source("R/multivariate_selection.R")
    source("R/logit.R")
    source("R/multivariate_selection.R")
+
    #To ignore the warnings during usage
    options(warn = -1)
    options("getSymbols.warning4.0" = FALSE)
@@ -141,8 +142,6 @@ reglog <- function(DF,
 
 
 
-
-
    ##################################################
    #               1) DATA CLEANING                 #
    ##################################################
@@ -158,9 +157,6 @@ reglog <- function(DF,
    DF <- data_prep_complete(DF,y,verbose = TRUE,keep)
    explicatives <- colnames(DF)[colnames(DF) != y]
    ##################################################
-
-
-
 
 
 
@@ -216,13 +212,13 @@ reglog <- function(DF,
                            K = k,
                            var = var_uni)
       {
-      coef <- ifelse(firth, mod$coefficients[K + 1], summary(mod)$coefficients[K + 1, 1])
+      coef <- mod$coefficients[K + 1]
       OR <- signif(exp(coef), round) #exp of logit function
-      pval <- ifelse(firth, mod$prob[K + 1], summary(mod)$coefficients[K + 1, 4])
+      pval <- mod$prob[K + 1]
       IC <- suppressMessages(confint(mod))
       IC_paste <- paste0("[", round(exp(IC[K + 1, 1]), round), ";", round(exp(IC[K + 1, 2]), round), "]")
-      name <- ifelse(firth, names(mod$coefficients)[K + 1], rownames(summary(mod)$coefficients)[K + 1])
-      level_var <- stringr::str_split(name, ifelse(firth, "DF\\[, var_uni\\]", var), n = 2)[[1]][2]
+      name <- names(mod$coefficients)[K + 1]
+      level_var <- stringr::str_split(name, var, n = 2)[[1]][2]
       name_var <- ifelse(level_var == "", var, paste0(var, "  (", level_var, ")"))
       ligne <- c(name_var, OR, IC_paste, pval, level_var)
       return(ligne)
@@ -234,13 +230,11 @@ reglog <- function(DF,
 
       progressbar(total = length(vect_explicative),i,variable = var_uni)
 
-      firth <- FALSE
-
       mod_uni <- logit(DF[,c(y,var_uni)])
 
       #saving deviances for each model
       var_i <- var_i + 1
-      dev_matrix[var_i,] <- c(var_uni,ifelse(firth,-2*mod_uni$loglik[2],mod_uni$deviance))
+      dev_matrix[var_i,] <- c(var_uni,-2*mod_uni$loglik[2])
 
 
       k = 0
@@ -251,7 +245,7 @@ reglog <- function(DF,
          ligneR <- getinfo_glm()
          vector_var[i] <- var_uni
          rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
-         row.names(rslt)[i + 1] <- ifelse(firth,paste0(var_uni,ligneR[5]),rownames(summary(mod_uni)$coefficients)[k + 1])
+         row.names(rslt)[i + 1] <- paste0(var_uni,ligneR[5])
       } else{
          while (k + 1 < length(levels(DF[, var_uni]))) {
             i <- i + 1
@@ -259,19 +253,9 @@ reglog <- function(DF,
             ligneR <- getinfo_glm()
             vector_var[i] <- var_uni
             rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
-            row.names(rslt)[i + 1] <- ifelse(firth,paste0(var_uni,ligneR[5]),rownames(summary(mod_uni)$coefficients)[k + 1])
+            row.names(rslt)[i + 1] <- paste0(var_uni,ligneR[5])
          }
       }
-   }
-
-   if (length(vector_firth) > 0)
-   {
-      for (var in vector_firth)
-      {
-         message("\ncomplete separation (Hauck-Donner phenomenon) occurred for ",var)
-      }
-      if (verbose)
-         cat("\nThe Firth's Bias-Reduced Logistic Regression has been used to compute these variables")
    }
 
 
@@ -279,8 +263,6 @@ reglog <- function(DF,
 ------------------------------------------------------------------------------------------------------------------------------
                    ")
    ##################################################
-
-
 
 
 
@@ -306,6 +288,9 @@ reglog <- function(DF,
    explicatives_remainings <- multivariate_selection(DF,y,explicatives, principal_factor = FALSE,method = "backward",criteria = "deviance",check_interactions = FALSE,alpha = 0.05,keep = keep2)
 
    last_model <- logit(DF[,c(y,explicatives_remainings)])
+   ##################################################
+
+
 
 
 
@@ -315,9 +300,8 @@ reglog <- function(DF,
    ##################################################
    #                 RESULT MATRIX                  #
    ##################################################
-   OR <- exp(summary(last_model)$coefficients[, 1])
-   pval <- summary(last_model)$coefficients[, 4]
-   try(IC <- suppressMessages(confint(last_model)))
+   OR <- exp(last_model$coefficients)
+   pval <- last_model$prob
    i <- 0
 
 
@@ -328,7 +312,7 @@ reglog <- function(DF,
       n_ligne <- match(OR_var, rownames(rslt))
       p <- round(pval[i + 1], round)
       p <- ifelse(p == 0, "<0.001", p)
-      try(IC_paste <- paste0("[", round(exp(IC[i + 1, 1]), round), ";", round(exp(IC[i + 1, 2]), round), "]"))
+      IC_paste <- paste0("[", round(exp(last_model$ci.lower[i + 1]), round), ";", round(exp(last_model$ci.upper[i + 1]), round), "]")
       try(rslt[n_ligne, 5:7] <- c(signif(OR[i + 1], round), IC_paste, p))
    }
 
@@ -339,6 +323,7 @@ reglog <- function(DF,
       rslt[n + 1, 4] <- ifelse(p == 0, "<0.001", p)
    }
    ##################################################
+
 
 
    # EXIT

@@ -4,7 +4,7 @@
 \alias{logit}
 \title{Function Logit}
 \usage{
-logit(DF, y = colnames(DF)[1], response = FALSE)
+logit(DF, y = colnames(DF)[1], response = FALSE, auto = TRUE)
 }
 \arguments{
 \item{DF}{a dataframe}

@@ -82,10 +82,10 @@ multivariate_selection <-
          {
             if (j == 1)
             {
-               model1 <- glm(DF[ ,y]~1, family = "binomial")
+               model1 <- stats::glm(DF[ ,y]~1, family = "binomial")
             } else
             {
-               model1 <- glm(DF[ ,y]~DF[, explicatives_multi_test[j]], family = "binomial")
+               model1 <- stats::glm(DF[ ,y]~DF[, explicatives_multi_test[j]], family = "binomial")
             }
             models1$deviance[j] <- model1$deviance
          }

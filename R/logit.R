@@ -8,11 +8,18 @@
 #' @import safeBinaryRegression
 #'
 #' @examples
-logit <- function(DF,y = colnames(DF)[1], response = FALSE){
+logit <- function(DF,y = colnames(DF)[1], response = FALSE, auto=TRUE){
 
    source("R/formulation.R")
    source("R/dataprep.R")
    source("R/complete_separation.R")
+
+   if (auto)
+   {
+      verbose <- FALSE
+   }else {
+      verbose <- TRUE
+   }
 
 
    # 1) Getting the elements
@@ -49,17 +56,29 @@ logit <- function(DF,y = colnames(DF)[1], response = FALSE){
          error_glm <- TRUE
          if (grepl("separation", er))
          {
-            cat("\nComplete or quasi complete separation occured for : ")
+            if (verbose)
+               cat("\nComplete or quasi complete separation occured for : ")
             for (var in colnames(DF)[-1])
             {
-               cat("\n- ", var)
+               if(verbose)
+                  cat("\n- ", var)
             }
-            DF <- complete_separation(var, y, DF, continue = response)
+            if (!auto)
+            {
+               DF <- complete_separation(var, y, DF, continue = response)
+            } else
+            {
+               firth_method = TRUE
+               error_glm <- FALSE
+               DF$continue <- " "
+               DF$method <- "firth"
+            }
             response <- DF$continue[1]
             DF$continue <- NULL
             if (DF$method[1] == "firth")
             {
-               cat("\n logistic regression using Firth's Bias-Reduced Logistic regression has been performed\n")
+               if(verbose)
+                  cat("\n logistic regression using Firth's Bias-Reduced Logistic regression has been performed\n")
                firth_method = TRUE
                error_glm <- FALSE
             }
@@ -73,7 +92,7 @@ logit <- function(DF,y = colnames(DF)[1], response = FALSE){
 
       #####
 
-   logistf::logistf(formule, data = DF,firth = firth_method) -> model
+   logistf::logistf(formule, data = DF,firth = firth_method, pl = FALSE) -> model
    return(model)
 }
 
