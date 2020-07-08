@@ -266,9 +266,6 @@ reglog <- function(DF,
 
 
 
-
-
-
    ##################################################
    #               MULTIVARIATE MODEL               #
    ##################################################
@@ -285,7 +282,22 @@ reglog <- function(DF,
    if (verbose)
       cat("\nThe method used for variable selection is the ",method," method\n\n")
    keep2 <- keep
-   explicatives_remainings <- multivariate_selection(DF,y,explicatives, principal_factor = FALSE,method = "backward",criteria = "deviance",check_interactions = FALSE,alpha = 0.05,keep = keep2)
+
+
+
+
+   #==================================================================================================#
+   #==================================================================================================#
+   # CLEANANCE
+   rslt
+   #==================================================================================================#
+   #==================================================================================================#
+
+
+
+
+
+   explicatives_remainings <- multivariate_selection(DF,y,explicatives, principal_factor = FALSE,method = "backward",criteria = "AIC",check_interactions = FALSE,alpha = 0.05,keep = keep2)
 
    last_model <- logit(DF[,c(y,explicatives_remainings)])
    ##################################################

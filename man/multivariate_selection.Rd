@@ -11,7 +11,7 @@ multivariate_selection(
   keep = FALSE,
   principal_factor = FALSE,
   method = "backward",
-  criteria = "deviance",
+  criteria = "AIC",
   check_interactions = FALSE,
   alpha = 0.05,
   verbose = TRUE
