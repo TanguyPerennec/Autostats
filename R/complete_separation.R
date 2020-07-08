@@ -14,10 +14,10 @@
 #'
 #' @examples
 check_dichotomous <-
-   function(DF)
+   function(var,y,DF)
    {
 
-      table(DF[, 1], DF[, 2]) -> table
+      table(DF[, y], DF[, var]) -> table
       table[1, ] -> table0
       table[2, ] -> table1
       table0[table0 != 0] -> value0
@@ -34,9 +34,9 @@ check_dichotomous <-
             check <- TRUE
             cat(
                "\n\n",
-               colnames(DF)[1],
+               y,
                " is fully explicated by ",
-               colnames(DF)[2],
+               var,
                " :\n
              x = (",
                trunc(min(names_value0)),
@@ -54,9 +54,9 @@ check_dichotomous <-
             check <- TRUE
             cat(
                "\n\n",
-               colnames(DF)[1],
+               y,
                " is fully explicated by ",
-               colnames(DF)[2],
+               var,
                " :\n
              x = (",
                trunc(min(names_value1)),
@@ -86,40 +86,59 @@ check_dichotomous <-
 ###################
 #  CHOICES
 ###################
-transform_sepration <- function(DF,y) {
-   var <- colnames(DF)[2]
+complete_separation <- function(var,
+                                y,
+                                DF,
+                                continue = FALSE)
+   {
 
-   check_dichotomous <- check_dichotomous(DF)
-   dicho_msg <-
-      ifelse(
-         check_dichotomous,
-         paste0(
-            "(could be done if ",
-            var,
-            "is indeed a dichotomous variation of ",
-            y,
-            ")"
-         ),
+   if (is.numeric(DF[,var]) || length(levels(as.factor(DF[,var]))) == 2)
+   {
+      dichotomous <- check_dichotomous(var,y,DF)
+      dicho_msg <- ifelse(
+         dichotomous,
+         paste0("(",var,"seems to be a dichotomous variation of ",y,")"),
          "(not advised)"
       )
-
-   cat(
-      "
-   What method should be applied to",
-      var,
-      " ?
-    1. Omission from the model.
-    2. Changing to a different type of model.
-    3. Use of an ad hoc adjustment (data manipulation).
-    4. Exact logistic regression [13].
-    5. Standard analysis with betaˆNV",
-      var,
-      "et to a ‘high’ value (for example, the value of 􏰀ˆNV ",
-      var,
-      " that iteration at which the log-likelihood changed by less than 10−6)."
-   )#
-   choice = 0
-   while (!(choice %in% c(1, 2, 3, 4, 5))) {
-      choice <- readline("Choice ? (1,2,3,4,5)       ")
+   }else
+   {
+      dicho_msg <- "(not advised)"
    }
+
+
+
+
+   if (continue == FALSE)
+   {
+      cat(
+         "
+      What method should be applied to",
+         var,
+         " ?
+       1. Omission in the model.",
+         dicho_msg,
+       "2. Changing to a different type of model.
+       3. Use of an ad hoc adjustment (data manipulation).
+       4. Exact logistic regression [13].
+       5. Standard analysis with betaˆNV",
+         var,
+         "et to a ‘high’ value (for example, the value of 􏰀ˆNV ",
+         var,
+         " that iteration at which the log-likelihood changed by less than 10−6)."
+      )#
+      choice = 0
+      while (!(choice %in% c(1, 2, 3, 4, 5))) {
+         choice <- readline("Choice ? (1,2,3,4,5)       ")
+      }
+      }else
+      {
+         choice <- continue
+      }
+
+
+   if (grepl(1,choice))
+   {
+      DF <- DF[DF != DF[, var]]
+   }
+
 }

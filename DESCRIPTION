@@ -31,4 +31,5 @@ Imports:
     ROCR,
     logistf,
     here,
-    inca3
+    inca3,
+    safeBinaryRegression

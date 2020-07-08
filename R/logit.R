@@ -5,12 +5,15 @@
 #'
 #' @return
 #' @export
+#' @import safeBinaryRegression
 #'
 #' @examples
 logit <- function(DF,y=colnames(DF)[1]){
 
    source("R/formulation.R")
    source("R/dataprep.R")
+   source("R/complete_separation.R")
+
 
    # 1) Getting the elements
    ##################################################
@@ -20,7 +23,8 @@ logit <- function(DF,y=colnames(DF)[1]){
 
    # 2) Verify conditions and transformation
    ##################################################
-   if (!is.factor(DF[,y])){
+   if (!is.factor(DF[,y]))
+   {
       DF <- as.data.frame(DF)
       DF[,y] <- tobinary(DF[,y])
    }
@@ -29,7 +33,28 @@ logit <- function(DF,y=colnames(DF)[1]){
 
    # 3) Regression
    ##################################################
-   model <- glm(formule, data = DF,family = "binomial")
+   tryCatch(
+      {
+         model <- glm(formule, data = DF,family = "binomial")
+      },
+         error = function(er)
+         {
+            if (grepl("separation",er))
+            {
+               cat("\nComplete separation for : ")
+               for (var in colnames(DF)[-1])
+               {
+                  if (grepl(var,er))
+                  {
+                     cat("\n- ",var)
+                     DF <- complete_separation(var,y,DF)
+                  }
+               }
+            }
+         }
+
+   )
+   confint(model)
    #####
 
 
