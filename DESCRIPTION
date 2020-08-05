@@ -1,6 +1,6 @@
 Package: autostats
 Title: Automated medical science statistics
-Version: 0.0.3
+Version: 0.0.6
 Authors@R: 
    c(person(given = "Tanguy",
            family = "Perennec",
@@ -9,15 +9,21 @@ Authors@R:
     person(given = "Matthieu",
            family = "Wargny",
            role = c("aut")
-           )
+           ),
+   person(given = "Gourraud",
+   family = "Pierre-Antoine",
+   role = c("aut")
+   )
     )
-Description: The package is able to performs basic statistics with a complete table 1. Logistic regression can be performed if a factor is provided. Linear regression on progress. 
+Description: The package is able to performs basic statistics with a complete table 1 and logistic regression. Logistic regression can be performed with automated variable selection. 
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.0
-Depends: R (>= 2.10)
+Depends: 
+    R (>= 2.10),
+    tidyverse
 Suggests: 
     knitr,
     rmarkdown,
@@ -32,4 +38,8 @@ Imports:
     logistf,
     here,
     inca3,
-    safeBinaryRegression
+    safeBinaryRegression,
+    missForest,
+    VIM,
+    MASS,
+    questionr

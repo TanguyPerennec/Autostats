@@ -1,10 +1,10 @@
-#' Multivariate selection
+#' Variable selection for a multivariate logistic regression model
 #'
 #' @param DF dataframe
-#' @param y character
+#' @param y character : variable to be explain by 'explicatives'
 #' @param explicatives vector of character : variables to be selected in the multivariate model
 #' @param principal_factor (optional) : principal criteria to explain y. First variable to be selected and won't be removed from selection.
-#' @param method character
+#' @param method character : can be backward
 #' @param criteria character
 #' @param check_interactions logical
 #' @param alpha num
@@ -22,247 +22,400 @@ multivariate_selection <-
             keep=FALSE,
             principal_factor=FALSE,
             method = "backward",
-            criteria = "AIC",
+            criteria = "deviance",
             check_interactions = FALSE,
             alpha = 0.05,
-            verbose=TRUE)
+            verbose=TRUE,
+            delta=7)
    {
 
-
-
-      source("R/formulation.R")
-
-      var_to_formula <- function(vars, y)
-      {
-         formule <- vars[1]
-         for (t in 2:length(vars))
-         {
-            formule <- paste0(formule,"+", vars[t])
-         }
-         formule <- paste0(y, "~", formule)
-         formule <- formula(formule)
-         return(formule)
-      }
-
-
-      # MODEL 0
-      if ("forward" %in% method)
-      {
-         formule <- formula(paste0(y,"~",1))
-         model0 <- glm(formule,family = "binomial",data = DF) # NULL MODEL
-      }
-      if ("backward" %in% method)
-         model0 <- logit(DF[, c(y, colnames(DF)[colnames(DF) != y])]) # FULL MODEL
-
-
-   explicatives_multi_test <- c("null model",explicatives)
+      #To ignore warnings during usage
+      options(warn = -1)
+      options("getSymbols.warning4.0" = FALSE)
 
 
 
-
-
-
-   # BACKWARD MODEL
-   ##############################
-   if ("backward" %in% method)
-   {
-
-      #Determination of the principal factor : specified or determined by the variable for which the deviance is the smallest
-      if (!is.logical(principal_factor))
-      {
-         if (!(principal_factor %in% explicatives))
-            stop("the principal factor must be in 'explicatives'")
-         if (verbose)
-            cat("\nFirst variable set is <",principal_factor,">\n because it is the principal factor specifed")
-         principal_factor -> keep[length(keep) + 1]
-      }
-      if (is.logical(principal_factor))
-      {
-         # Determination of p-val vs anova for all elements
-         models1 <- data.frame(row.names = explicatives_multi_test)
-         for (j in seq(explicatives_multi_test))
-         {
-            if (j == 1)
-            {
-               model1 <- stats::glm(DF[ ,y]~1, family = "binomial")
-            } else
-            {
-               model1 <- stats::glm(DF[ ,y]~DF[, explicatives_multi_test[j]], family = "binomial")
-            }
-            models1$deviance[j] <- model1$deviance
-         }
-         principal_factors <- models1[order(models1$deviance),,drop = FALSE]
-         principal_factor <- rownames(principal_factors)[1]
-         if (verbose)
-            cat("\nFirst variable set is <",principal_factor,">\n because the model with this variable is better than all other models with 0 (null model) or 1 variable\n")
-
-      }
-
-
-
-
-      explicatives_remains <- explicatives[explicatives != principal_factor]
-      formule <- formula(paste0(y,"~",principal_factor))
-      model1 <- logit(DF)
-
-
-      # Determination of interactions
-      if (check_interactions)
-      {
-         interact_table <-  data.frame(row.names = explicatives_remains)
-         for (i in seq(explicatives_remains))
-         {
-            formule1 <- paste(y, "~", principal_factor, "+", explicatives_remains[i])
-            formule2 <- paste(formule1, "+", principal_factor, ":", explicatives_remains[i])
-            formule1 <- formula(formule1)
-            formule2 <- formula(formule2)
-            model_interact <- glm(formule2,data = DF, family = "binomial")
-            anova <- anova(model_interact,test = "LRT")
-            pvalue <- anova$Pr[4]
-            interact_table$pval[i] <- pvalue
-         }
-         interact_table <- interact_table[order(interact_table$pval),,drop = FALSE] #df with all p-values of likelihood ratio test between model with and without interaction
-         signif_interact_table <- row.names(interact_table)[interact_table[,1] < 0.05]
-         for (j in seq(signif_interact_table))
-         {
-            signif_interact_table[j] <- paste0(principal_factor,":",signif_interact_table[j])
-         }
-         interactives_remains <- signif_interact_table
-      }
-
-
-
-      # Backward selection for interaction
-      if (check_interactions)
-      {
-         if (length(interactives_remains) > 0)
-         {
-            for (i in seq(interactives_remains))
-            {
-               formule <- formulation(DF[,c(y,explicatives_remains)])
-               for (i in seq(interactives_remains))
-               {
-                  interactive_formule <-
-                     ifelse(i == 1, interactives_remains[i], paste0("+", interactives_remains[i]))
-               }
-               newterms <- interactive_formule
-               formule <- update(formule, ~ . + newterms)
-               model0 <- stats::glm(formule, data = DF, family = "binomial")
-               pvals <- summary(model0)$coefficients[,4]
-
-               #Elimination one by one of all interaction variable based on PVALUE
-               interact_pval <- pvals[match(interactives_remains,names(pvals))]
-               interact_pval <- interact_pval[order(-interact_pval)]
-               if (interact_pval[1] > alpha)
-               {
-                  interactives_remains <- interactives_remains[interactives_remains != names(interact_pval)]
-               }
-            }
-         }
-      }
-
-
-
-
-      vars_remainings <- explicatives
-      last_model <- logit(DF[,c(y,vars_remainings)])
-
-
-      #Backward selection for all variables
-      #####
-      # Test 2 models // return p-val of the test corresponding to "critere
-      ## CRITERIA
-      # 1. significance criteria =to compare the log-likelihoods of 2 nested models : the variable with the
-         # A. Wald test : only if there is 1 difference
-         # B. Score test : only if there is 1 difference
-         # C. Loglikelihood ratio test : to be prefered if multiple coeffs are tested => only valable way
-      # 2. information criteria
       models_test <- function(model,
                               y,
                               var_diff,
-                              critere_choix = "AIC")
+                              ...)
       {
-         if (!(critere_choix %in% c("deviance", "AIC", "BIC")))
+         if (!(criteria  %in% c("deviance", "AIC", "BIC")))
             stop("criteria is not on the list")
 
-         if (critere_choix == "deviance")
+         formule_diff_terms <- attr(model$terms,"term.labels")
+         if (var_diff %in% formule_diff_terms)
          {
-            formule_diff_terms <- model$terms
             formule_diff_terms <- formule_diff_terms[formule_diff_terms != var_diff]
-            formule_diff <- var_to_formula(formule_diff_terms,y)
+         }else {
+            formule_diff_terms <- c(formule_diff_terms,var_diff)
+         }
+         formule_diff <- formulation(c(y,formule_diff_terms))
+
+         if (criteria  == "deviance")
+         {
             model2 <- stats::glm(formule_diff, data = DF, family = "binomial")
             anova_test <- anova(model, model2, test = "LRT")
             pval <- anova_test$Pr[nrow(anova_test)]
+            val_test <- pval
          }
 
-         if (critere_choix == "AIC")
+         if (criteria  == "AIC" || criteria  == "BIC")
          {
-            formule_diff_terms <- model$terms
-            new_formula <-  paste0(y,"~")
-            int = 0
-            formule_diff_terms <- formule_diff_terms[-grep(var_diff,formule_diff_terms)]
+            k_val <- ifelse(criteria  == "AIC",2,log(nrow(DF)))
+            model2 <- stats::glm(formule_diff,data = DF,family = "binomial")
+            sens <- ifelse(extractAIC(model,k = k_val)[1] > extractAIC(model2,k = k_val)[1],1,-1)
+            delta_AIC <- (extractAIC(model,k = k_val)[2] - extractAIC(model2,k = k_val)[2])*sens
+            val_test <- delta_AIC
+         }
 
-            for (var in explicatives)
+         return(val_test)
+      }
+
+
+      response <- list()
+
+      DF <- as.data.frame(DF)
+      explicatives_multi_test <- c("null model",explicatives)
+      matrix_rslt <- matrix(ncol = length(explicatives)*3,nrow = length(explicatives))
+      rownames(matrix_rslt) <- explicatives
+      nstep = 0
+
+
+
+      # BACKWARD ELIMINATION
+      ##############################
+      if (grepl("backward",method))
+      {
+         #Determination of the principal factor : specified or determined by the variable for which the deviance is the smallest
+         if (!is.logical(principal_factor))
+         {
+            if (!(principal_factor %in% explicatives))
+               stop("the principal factor must be in 'explicatives'")
+            if (verbose)
+               cat("\nFirst variable set is <",principal_factor,">\n because it is the principal factor specifed")
+            principal_factor -> keep[length(keep) + 1]
+         }
+         if (is.logical(principal_factor))
+         {
+            # Determination of p-val with anova for all variables
+            models1 <- data.frame(row.names = explicatives_multi_test)
+            for (j in seq(explicatives_multi_test))
             {
-               if (TRUE %in% (grepl(var, formule_diff_terms)))
+               if (j == 1)
                {
-                  int <- int + 1
-                  new_formula <- ifelse(int == 1, paste0(new_formula, var), paste0(new_formula, "+", var))
+                  model1 <- stats::glm(DF[ ,y]~1, family = "binomial")
+               } else
+               {
+                  model1 <- stats::glm(DF[ ,y]~DF[, explicatives_multi_test[j]], family = "binomial")
+               }
+               models1$deviance[j] <- model1$deviance
+            }
+            principal_factors <- models1[order(models1$deviance),,drop = FALSE]
+            principal_factor <- rownames(principal_factors)[1]
+            if (verbose)
+               cat("\nFirst variable set is <",principal_factor,">\n because the model with this variable is better than all other models with 0 (null model) or 1 variable\n")
+         }
+
+
+         explicatives_remains <- explicatives[explicatives != principal_factor]
+         formule <- formula(paste0(y,"~",principal_factor))
+         model1 <- stats::glm(formule, data = DF, family = "binomial")
+
+
+         # Determination of interactions with the principal factor
+         if (check_interactions)
+         {
+            interact_table <-  data.frame(row.names = explicatives_remains)
+            for (i in seq(explicatives_remains))
+            {
+               formule1 <- paste(y, "~", principal_factor, "+", explicatives_remains[i])
+               formule2 <- paste(formule1, "+", principal_factor, ":", explicatives_remains[i])
+               formule1 <- formula(formule1)
+               formule2 <- formula(formule2)
+               model_interact <- stats::glm(formule2,data = DF, family = "binomial")
+               anova <- anova(model_interact,test = "LRT")
+               pvalue <- anova$Pr[4]
+               interact_table$pval[i] <- pvalue
+            }
+            interact_table <- interact_table[order(interact_table$pval),,drop = FALSE] #df with all p-values of likelihood ratio test between model with and without interaction
+            signif_interact_table <- row.names(interact_table)[interact_table[,1] < 0.05]
+            for (j in seq(signif_interact_table))
+            {
+               signif_interact_table[j] <- paste0(principal_factor,":",signif_interact_table[j])
+            }
+            interactives_remains <- signif_interact_table
+         }
+
+
+
+
+         # Backward selection for interaction
+         if (check_interactions)
+         {
+            if (length(interactives_remains) > 0)
+            {
+               for (i in seq(interactives_remains))
+               {
+                  formule <- formulation(DF[,c(y,explicatives_remains)])
+                  for (i in seq(interactives_remains))
+                  {
+                     interactive_formule <-
+                        ifelse(i == 1, interactives_remains[i], paste0("+", interactives_remains[i]))
+                  }
+                  newterms <- interactive_formule
+                  formule <- update(formule, ~ . + newterms)
+                  model0 <- stats::glm(formule, data = DF, family = "binomial")
+                  pvals <- summary(model0)$coefficients[,4]
+
+                  #Elimination one by one of all interaction variable based on PVALUE
+                  interact_pval <- pvals[match(interactives_remains,names(pvals))]
+                  interact_pval <- interact_pval[order(-interact_pval)]
+                  if (interact_pval[1] > alpha)
+                  {
+                     interactives_remains <- interactives_remains[interactives_remains != names(interact_pval)]
+                  }
+               }
+            }
+         }
+
+
+         vars_remainings <- explicatives
+         formule_lastmodel <- formulation(object = DF[,c(y,vars_remainings)])
+         last_model <- stats::glm(formule_lastmodel,data = DF, family = "binomial")
+         vars_out <- NULL
+
+         while (length(vars_remainings) > 0 & nstep < length(explicatives)*3)
+         {
+            nstep <- nstep + 1
+            model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
+            for (i in seq(vars_remainings))
+            {
+               pval <- models_test(model = last_model, y, var_diff = vars_remainings[i])
+               model_test_df[i,] <- c(vars_remainings[i],pval)
+            }
+            model_test_df <- as.data.frame(model_test_df)
+            col2 <- ifelse(criteria == "deviance","pval",paste0("delta ",criteria))
+            colnames(model_test_df) <- c("name",col2)
+            model_test_df[,2] <- as.numeric(as.character(model_test_df[,2]))
+            model_test_df$name <- as.character(model_test_df$name)
+            for (f in seq(model_test_df[,1]))
+            {
+               col <- model_test_df[f,1]
+               matrix_rslt[match(col,rownames(matrix_rslt)),nstep] <- model_test_df[f,2]
+            }
+            model_test_df[order(-model_test_df[,2]),] -> model_test_df
+
+
+            k <- 1
+            while (model_test_df[k,1] %in% keep)
+            {
+               k <- k + 1
+            }
+
+            if (model_test_df[k,2] > ifelse(criteria == "deviance",alpha,7))
+            {
+               if (verbose)
+                  cat("\nThe best model exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+               vars_remainings <- vars_remainings[vars_remainings != model_test_df[k,1]]
+               vars_out <- c(vars_out,model_test_df[k,1])
+            }else
+            {
+               if (verbose)
+                  cat("\nThe best model do not exlude any variable of the remainings (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta",criteria," threeshold = 10")),"):",vars_remainings)
+               break
+            }
+            last_model <- stats::glm(formula = formulation(object = vars_remainings,y),family = "binomial",data = DF)
+
+
+
+            ############
+            if ((grepl("stepwise",method) || "stepwise" %in% method) & !is.null(vars_out))
+            {
+               model_test_df <- matrix(nrow = length(vars_out), ncol = 2)
+               for (i in seq(vars_out))
+               {
+                  pval <- models_test(model = last_model, y, var_diff = vars_out[i])
+                  model_test_df[i,] <- c(vars_out[i],pval)
+               }
+               model_test_df <- as.data.frame(model_test_df)
+               col2 <- ifelse(criteria == "deviance","pval",paste0("delta ",criteria))
+               colnames(model_test_df) <- c("name",col2)
+               model_test_df[,2] <- as.numeric(as.character(model_test_df[,2]))
+               model_test_df$name <- as.character(model_test_df$name)
+               for (f in seq(model_test_df[,1]))
+               {
+                  col <- model_test_df[f,1]
+                  matrix_rslt[match(col,rownames(matrix_rslt)),nstep] <- model_test_df[f,2]
+               }
+               model_test_df[order(model_test_df[,2]),] -> model_test_df
+
+               k <- 1
+               while (model_test_df[k,1] %in% keep)
+               {
+                  k <- k + 1
                }
 
+               if (model_test_df[k,2] < ifelse(criteria == "deviance",alpha,7))
+               {
+                  if (verbose)
+                     cat("\nThe best model now includes <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+                  vars_remainings <- c(vars_remainings,model_test_df[k,1])
+                  vars_out <- vars_out[vars_out != model_test_df[k,1]]
+               }
+               else
+               {
+                  if (verbose)
+                     cat("\nThe best model does not include any variables out of the present model (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta ",criteria," threeshold = 10")),"):",vars_out)
+               }
             }
-            new_formula <- formula(new_formula)
-            firth_method <- ifelse(model$method == "Standard ML",FALSE,TRUE)
-            model2 <- update(model,new_formula)
-            delta_AIC <- extractAIC(model)[2] - extractAIC(model2)[2]
+            last_model <- stats::glm(formula = formulation(object = vars_remainings,y),family = "binomial",data = DF)
+
+            }
+
+
          }
 
-         return(delta_AIC)
-      }
 
 
 
+      #=========================================================================================#
 
-
-      while (length(vars_remainings) > 0)
+      # FORWARD SELECTION
+      ##############
+      if (grepl("forward",method) || "forward" %in% method)
       {
-         model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
-         for (i in seq(vars_remainings))
+         if (is.null(keep) || is.logical(keep))
          {
-            pval <- models_test(model = last_model, y, var_diff = vars_remainings[i])
-            model_test_df[i,] <- c(vars_remainings[i],pval)
+            vars_included <- principal_factor
+         }else{
+            vars_included <- keep
          }
-         model_test_df <- as.data.frame(model_test_df)
-         colnames(model_test_df) <- c("name","pval")
-         model_test_df$pval <- as.numeric(as.character(model_test_df$pval))
-         model_test_df$name <- as.character(model_test_df$name)
-         model_test_df[order(-model_test_df$pval),] -> model_test_df
+         vars_remainings <- explicatives[explicatives != vars_included]
+         formule <- formulation(vars_included,y)
+         last_model <- stats::glm(formule,data = DF, family = "binomial")
+         nstep <- 0
 
-
-         k <- 1
-         while (model_test_df[k,1] %in% keep)
+         while (length(vars_remainings) > 0 & nstep < length(explicatives)*3)
          {
-            k <- k + 1
-         }
+            nstep <- nstep + 1
+            model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
+            for (i in seq(vars_remainings))
+            {
+               pval <- models_test(model = last_model, y, var_diff = vars_remainings[i])
+               model_test_df[i,] <- c(vars_remainings[i],pval)
+            }
+            model_test_df <- as.data.frame(model_test_df)
+            col2 <- ifelse(criteria == "deviance","pval",paste0("delta ",criteria))
+            colnames(model_test_df) <- c("name",col2)
+            model_test_df[,2] <- as.numeric(as.character(model_test_df[,2]))
+            model_test_df$name <- as.character(model_test_df$name)
+            for (f in seq(model_test_df[,1]))
+            {
+               col <- model_test_df[f,1]
+               matrix_rslt[match(col,rownames(matrix_rslt)),nstep] <- model_test_df[f,2]
+            }
+            model_test_df[order(model_test_df[,2]),] -> model_test_df
+
+            if (model_test_df[1,2] < ifelse(criteria == "deviance",alpha,delta))
+            {
+               if (verbose)
+                  cat("\nThe best model includes <",model_test_df[1,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[1,2]),3),"), so this variable is now included")
+               vars_remainings <- vars_remainings[vars_remainings != model_test_df[1,1]]
+               vars_included <- c(vars_included,model_test_df[1,1])
+            }else
+            {
+               if (verbose)
+                  cat("\nThe best model does not include any variables remaining (",ifelse(criteria == "deviance",paste0("with risk ",alpha),paste0("with delta ",criteria," threeshold = 10")),"):",vars_remainings)
+               break
+            }
+
+            last_model <- stats::glm(formula = formulation(object = vars_included,y),family = "binomial",data = DF)
 
 
+            if ((grepl("stepwise",method) || "stepwise" %in% method) & nstep > 1)
+            {
+               model_test_df <- matrix(nrow = length(vars_included), ncol = 2)
+               vars_included <- vars_included[vars_included != FALSE]
+               for (i in seq(vars_included))
+               {
+                  pval <- models_test(model = last_model, y, var_diff = vars_included[i])
+                  model_test_df[i,] <- c(vars_included[i],pval)
+               }
+               model_test_df <- as.data.frame(model_test_df)
+               col2 <- ifelse(criteria == "deviance","pval",paste0("delta ",criteria))
+               colnames(model_test_df) <- c("name",col2)
+               model_test_df[,2] <- as.numeric(as.character(model_test_df[,2]))
+               model_test_df$name <- as.character(model_test_df$name)
+               for (f in seq(model_test_df[,1]))
+               {
+                  col <- model_test_df[f,1]
+                  matrix_rslt[match(col,rownames(matrix_rslt)),nstep] <- model_test_df[f,2]
+               }
+               model_test_df[order(-model_test_df[,2]),] -> model_test_df
 
-         if (model_test_df[k,2] > ifelse(criteria == "deviance",alpha,10))
-         {
-            if (verbose)
-               cat("\nThe best model exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with ∆AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
-            vars_remainings <- vars_remainings[vars_remainings != model_test_df[k,1]]
-         }
-         else
-         {
-            if (verbose)
-               cat("\nThe best model do not exlude any variable of the variables remaining (",ifelse(criteria == "deviance",paste0("with risk",alpha),"with ∆AIC threeshold = 10"),"):",vars_remainings)
-            break
+               k <- 1
+               while (model_test_df[k,1] %in% keep)
+               {
+                  k <- k + 1
+               }
+
+               if (model_test_df[k,2] > ifelse(criteria == "deviance",alpha,7))
+               {
+                  if (verbose)
+                     cat("\nThe best model now exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+                  vars_remainings <- c(vars_remainings,model_test_df[k,1])
+                  vars_included <- vars_included[vars_included != model_test_df[k,1]]
+               }
+               else
+               {
+                  if (verbose)
+                     cat("\nThe best model do not exlude any variable of the present model (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta ",criteria," threeshold = 10")),"):",vars_included)
+               }
+               last_model <- stats::glm(formula = formulation(object = vars_included,y),family = "binomial",data = DF)
+            }
          }
       }
 
-      return(vars_remainings)
-      #####
-   }
 
-}
+
+         if (grepl("forward",method))
+         {
+            response$vars_multi <- vars_included[-1]
+         }else{
+            response$vars_multi <- vars_remainings
+         }
+         col <- ncol(matrix_rslt)
+
+            while (col > 1)
+            {
+               if (ncol(matrix_rslt) < 3)
+               {
+                  matrix_rslt <- matrix_rslt[,-col]
+                  break
+               }
+               if (!(FALSE %in% is.na(matrix_rslt[,col])))
+               {
+                  matrix_rslt <- matrix_rslt[,-col]
+               }
+               col <- col - 1
+            }
+            if (!is.null(ncol(matrix_rslt)))
+            {
+               for (col in 1:ncol(matrix_rslt))
+               {
+                  if (method == "backward")
+                  {
+                     matrix_rslt <- matrix_rslt[order(matrix_rslt[,col],na.last = TRUE),]
+                  }else{
+                     matrix_rslt <- matrix_rslt[order(-matrix_rslt[,col],na.last = TRUE),]
+                  }
+               }
+            }
+
+            response$all_values <- round(matrix_rslt,3)
+
+            return(response)
+
+         }
+

@@ -13,6 +13,8 @@
 #'
 #' @return check_dichotomous returns a boolean TRUE if y is a dichotomous variable of x
 #' @export
+#' @import tidyverse
+#' @import questionr
 #'
 #' @examples
 check_dichotomous <-
@@ -79,8 +81,6 @@ check_dichotomous <-
 
 
 
-
-
 ###############
 #2) Data manipulation
 clogg_transformation <- function(DF)
@@ -119,6 +119,87 @@ clogg_transformation <- function(DF)
    }
 
 
+###############
+recast <- function(var,
+                   DF,
+                   y,
+                   nb_breaks=5,
+                   nb_entier = TRUE,
+                   max_break = 9)
+{
+
+   DF <- as.data.frame(DF)
+   if (is.character(DF[, var]) || is.factor(DF[, var]))
+   {
+      table(DF[,var],DF[,y]) -> table_var
+         cat("
+   Recast the model consists of re-grouping columns (variables) or modalities (if multimodal variable) :
+      - The variable is :",var,"
+      - modalities are : ")
+         for (n in seq(table_var[,1]))
+         {
+            indice <- ifelse((table_var[n,1] < 3 || table_var[n,2] < 3)," ***"," ")
+             cat(paste0("\n\t\t", n,". ",rownames(table_var)[n],indice))
+         }
+      cat(" ")
+      modalities_to_bind <- readline("Which modalities should be bind ? (ex : 1+2+3=autres)    ")
+      cat(" ")
+      stringr::str_split(modalities_to_bind,"=")[[1]][1] -> variables
+      stringr::str_split(variables,"[+]")[[1]] -> variables
+      stringr::str_split(modalities_to_bind,"=")[[1]][2] -> new_name
+      for (s in seq(variables))
+      {
+         DF[, var][DF[, var] == rownames(table_var)[as.numeric(variables[s])]] <- new_name
+      }
+   }else
+   {
+      trunc(max(DF[ ,var])) + 1 -> max_int
+      trunc(min(DF[ ,var])) -> min_int
+      range = max_int - min_int
+      possible_breaks <- 1 + seq(1:min(max_break - 1, range - 1)) #max between set in function and possible
+      for (b in possible_breaks[possible_breaks <= range])
+      {
+         if (range %% b != 0) #rm if not multiple
+            possible_breaks <- possible_breaks[-(b - 1)]
+      }
+
+      result_break <- as.data.frame(DF[ ,var])
+      i <- 2
+      for (breaking in possible_breaks)
+      {
+         step <-  (max_int - min_int)/breaking
+         breaks_test <-  min_int
+         for (m in 1:breaking)
+         {
+            breaks_test[m + 1] = breaks_test[m] + step
+         }
+         new_var <- cut(DF[ ,var],breaks = breaks_test, include.lowest = TRUE)
+         result_break[ ,i] <- new_var
+         colnames(result_break)[i] <- breaking
+         i = i + 1
+      }
+      # Check result
+      sum_sq_diff = vector()
+      sq_diff = vector()
+      for (u in 1:(length(result_break) - 1))
+      {
+         sd(table(result_break[ ,u + 1])) -> sum_sq_diff[u]
+         names(sum_sq_diff)[u] <- colnames(result_break)[u + 1]
+      }
+
+      names(sum_sq_diff[order(sum_sq_diff)][1]) -> best_breaks #cut with the more homogenous solution
+
+      #final cut
+      DF[ ,var] <- result_break[ ,best_breaks]
+
+   }
+      DF <- as.data.frame(DF)
+      return(DF)
+}
+
+
+
+
 
 #  CHOICES
 ###################
@@ -127,7 +208,7 @@ clogg_transformation <- function(DF)
 #' @param var variable to be evaluate
 #' @param y the variable to explain
 #' @param DF the dataframe
-#' @param continue (optional)
+#' @param continue (optional) : whether the response should be apllied to all following variables.
 #'
 #' @return
 #' @export
@@ -143,7 +224,7 @@ complete_separation <- function(var,
    if (is.numeric(DF[,var]) || length(levels(as.factor(DF[,var]))) == 2)
    {
       #dichotomous <- check_dichotomous(var,y,DF)
-      dicho_msg <- "(not advised)" #décommenter lorsque check_dicotomous
+      dicho_msg <- "(not advised)" #dEcommenter lorsque check_dicotomous
       #ifelse(
        #  dichotomous,
        #  paste0("(",var,"seems to be a dichotomous variation of ",y,")"),
@@ -156,34 +237,24 @@ complete_separation <- function(var,
 
 
 
-
-   if (continue == FALSE)
+   available <- c("1","2","6")
+   availablec <- c("1c","2c","6c")
+   if (!(continue %in% available))
    {
-      cat(
-         "
-      What method should be applied to",
-         var,
-         " ?
-       1. Omission in the variable.",
-         dicho_msg,
-       "
-       2. Changing to a different type of model (not available)
+      cat("
+      What method should be applied to",var," ?
+       1. Omission of the variable.", dicho_msg,"
+       2. Re-cast the model
        3. Use of an ad hoc adjustment (Clogg transformation)
        4. Exact logistic regression (not available)
        5. Standard analysis with beta set to a ‘high’ value (ex : so that an iteration change the log-likelihood by less than 10−6) (not available)
        6. Firth's Bias-Reduced Logistic Regression"
-
-      )#
+      )
       choice = 0
-      available <- c("1","6")
-      msg_a <- " "
-      for (h in available)
+      msg <- paste("Your choice (",paste(available,collapse = ", "),") ?     ")
+      while (!(choice %in% available || choice %in% availablec))
       {
-         msg_a <- paste0(msg_a,"  ",h)
-      }
-      msg <- paste0("\nChoice (",available," ) ?     ")
-      while (!(choice %in% available))
-      {
+         cat(" ")
          choice <- readline(msg)
       }
    }else
@@ -191,26 +262,40 @@ complete_separation <- function(var,
       choice <- continue
    }
 
+   # Actions function of the choice
    if (grepl("1",choice))
    {
-      DF <- DF[DF != DF[, var]]
+      DF[, var] <- NULL
       as.data.frame(DF) -> DF
       DF$method[1] <- "logit"
    }
+   #####
    if (grepl("2",choice))
+   {
+      DF <- recast(var, DF, y)
+      DF <- as.data.frame(DF)
+      DF$method[1] <- "logit"
+   }
+   #####
+   if (grepl("3",choice))
    {
       DF <- clogg_transformation(DF)
       DF <- as.data.frame(DF)
       DF$method[1] <- "logit"
    }
+   #####
    if (grepl("6",choice))
    {
       DF$method[1] <- "firth"
    }
+
+   # If a c is added
+   #####
    if (grepl("c",choice))
    {
       continue <- strsplit(choice,"c")[[1]]
    }
    DF$continue[1] <- continue
+   DF <- as.data.frame(DF)
    return(DF)
 }

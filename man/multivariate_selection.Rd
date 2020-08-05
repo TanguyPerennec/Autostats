@@ -2,7 +2,7 @@
 % Please edit documentation in R/multivariate_selection.R
 \name{multivariate_selection}
 \alias{multivariate_selection}
-\title{Multivariate selection}
+\title{Variable selection for a multivariate logistic regression model}
 \usage{
 multivariate_selection(
   DF,
@@ -11,16 +11,17 @@ multivariate_selection(
   keep = FALSE,
   principal_factor = FALSE,
   method = "backward",
-  criteria = "AIC",
+  criteria = "deviance",
   check_interactions = FALSE,
   alpha = 0.05,
-  verbose = TRUE
+  verbose = TRUE,
+  delta = 7
 )
 }
 \arguments{
 \item{DF}{dataframe}
 
-\item{y}{character}
+\item{y}{character : variable to be explain by 'explicatives'}
 
 \item{explicatives}{vector of character : variables to be selected in the multivariate model}
 
@@ -28,7 +29,7 @@ multivariate_selection(
 
 \item{principal_factor}{(optional) : principal criteria to explain y. First variable to be selected and won't be removed from selection.}
 
-\item{method}{character}
+\item{method}{character : can be backward}
 
 \item{criteria}{character}
 
@@ -42,5 +43,5 @@ multivariate_selection(
 
 }
 \description{
-Multivariate selection
+Variable selection for a multivariate logistic regression model
 }

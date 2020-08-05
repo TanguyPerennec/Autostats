@@ -4,63 +4,37 @@
 \alias{reglog}
 \title{Logistic Regression Function}
 \usage{
-reglog(
-  DF,
-  y,
-  explicatives = colnames(DF)[colnames(DF) != y],
-  keep = FALSE,
-  alpha = 0.05,
-  verbose = TRUE,
-  min_multivariate = 2,
-  alpha_max = 0.2,
-  round = 3,
-  method = "backward",
-  rowstimevariable = 10,
-  confirmation = TRUE,
-  exit = c("console", "excel")
-)
+reglog(DF,y,explicatives,...)
 }
 \arguments{
-\item{DF}{dataframe, matrix or tibble that contains all explicatives variables and the variable to explain.}
+\item{DF}{dataframe, matrix or tibble that contains all explicatives variables and the variable to explain}
 
-\item{y}{character : variable to explain.}
+\item{y}{character : name of the variable to explain}
 
-\item{explicatives}{character vector : variables that should explain y in the logistic regression. Takes all columns but y from the dataframe if kept empty.}
-
-\item{keep}{character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.}
+\item{explicatives}{character vector : variables that should explain y in the logistic regression.
+Takes all columns but y from the dataframe if kept empty.}
 
 \item{alpha}{num : significance threeshold used to delete non-significant variables in the multivariate model.}
 
 \item{verbose}{logical : if TRUE, explainations are displayed in the console while running the function.}
 
-\item{min_multivariate}{num : the minimum number of variables that should be kept in the multivariate model. If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.}
+\item{min_multivariate}{num : the minimum number of variables that should be kept in the multivariate model.
+If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.}
 
 \item{alpha_max}{num : maximum threeshold used to select the minimum multivariate variables wanted.}
 
 \item{round}{num : number of digits to display in the final table.}
 
-\item{method}{the method to be used to select variables in the multivariate model.The default method is the backward elimination. See details for more informations.}
+\item{method}{the method that will be used to select variables in the multivariate model.The default method is the backward elimination. See 'details' section for more informations.}
 
-\item{rowstimevariable}{: minimum number of times row has to be bigger than variables}
-
-\item{confirmation}{logical : ask confirmation before doing a transformation}
-
-\item{exit}{character or character vector specifying the exit of the fonction : results in the console or saved in excel file}
+\item{exit}{specify where do you want to display the results : console (the default), excel (in a results.xlsx file), html (using kable)}
 }
 \value{
 reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model
 }
 \description{
-reglog is used to make logistic regression and gives one matrix with variables, odds-ratios, confidence intervals and p-values of univariate and multivariate models.
-}
-\details{
-Method used to select the variables in the multivariate model can be set it the "method" parameter.
-"backward" elimination is the default technique : the least significant effect that does not meet the
-level "alpha" for staying in the model is removed. The process is repeated until no other effect in the
-model meets the specified level for removal. In "forward" selection, the p-value is computed for each effect
-not in the model and examines the largest of these statistics. If it is significant at entry level "alpha",
-the corresponding effect is added to the model.Once an effect is entered in the model, it is never removed
-from the model. The process is repeated until none of the remaining effects meet the specified level for entry.
+reglog is able to perform logistic regression with variable selection and gives one matrix with variable names, odds-ratios,
+confidence intervals and p-values of univariate and multivariate models.
 }
 \references{
 Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17

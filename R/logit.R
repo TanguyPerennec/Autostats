@@ -2,23 +2,34 @@
 #'
 #' @param DF a dataframe
 #' @param y (optional) a variable to explain by logit function. If kept empty, y is the first element of DF.
+#' @param response
+#' @param auto
+#' @param verbose
 #'
 #' @return
 #' @export
 #' @import safeBinaryRegression
+#' @import logistf
 #'
 #' @examples
-logit <- function(DF,y = colnames(DF)[1], response = FALSE, auto=TRUE){
+logit <- function(DF,
+            y = colnames(DF)[1],
+            response = FALSE,
+            auto = FALSE,
+            verbose = NULL)
 
-   source("R/formulation.R")
-   source("R/dataprep.R")
-   source("R/complete_separation.R")
+{
+   DF <- as.data.frame(DF)
 
-   if (auto)
+   if (is.null(verbose))
    {
-      verbose <- FALSE
-   }else {
-      verbose <- TRUE
+      if (auto)
+      {
+         verbose <- FALSE
+      }else
+      {
+         verbose <- TRUE
+      }
    }
 
 
@@ -32,8 +43,12 @@ logit <- function(DF,y = colnames(DF)[1], response = FALSE, auto=TRUE){
    ##################################################
    if (!is.factor(DF[, y]))
    {
-      DF <- as.data.frame(DF)
-      DF[,y] <- tobinary(DF[, y])
+      DF[, y] <- tobinary(DF[, y])
+   }else {
+      if (!(levels(DF[,y]) == c(0,1) || levels(DF[,y]) == c(1,0)))
+      {
+         DF[,y] <- tobinary(DF[, y])
+      }
    }
    #####
 
@@ -49,50 +64,29 @@ logit <- function(DF,y = colnames(DF)[1], response = FALSE, auto=TRUE){
       tryCatch(
       {
          error_glm <- FALSE
-         model <- glm(formule, data = DF, family = "binomial")
+         model <- safeBinaryRegression::glm(formule, data = DF, family = "binomial")
       },
       error = function(er)
       {
          error_glm <- TRUE
-         if (grepl("separation", er))
+         if (grepl("separation", er)) # there is a complete separation
          {
-            if (verbose)
-               cat("\nComplete or quasi complete separation occured for : ")
+            if (verbose) cat("\nComplete or quasi complete separation occured for : \n")
             for (var in colnames(DF)[-1])
             {
-               if(verbose)
-                  cat("\n- ", var)
+               if (verbose) cat(var, " ")
+               DF <- complete_separation(var,y,DF)
+               DF$continue <- NULL
+               DF$method <- NULL
             }
-            if (!auto)
-            {
-               DF <- complete_separation(var, y, DF, continue = response)
-            } else
-            {
-               firth_method = TRUE
-               error_glm <- FALSE
-               DF$continue <- " "
-               DF$method <- "firth"
-            }
-            response <- DF$continue[1]
-            DF$continue <- NULL
-            if (DF$method[1] == "firth")
-            {
-               if(verbose)
-                  cat("\n logistic regression using Firth's Bias-Reduced Logistic regression has been performed\n")
-               firth_method = TRUE
-               error_glm <- FALSE
-            }
-            DF$method <- NULL
-         }else
-         {
-            stop(er)
          }
       })
    }
 
       #####
 
-   logistf::logistf(formule, data = DF,firth = firth_method, pl = FALSE) -> model
+glm(formule, data = DF, family = "binomial") -> model
+
    return(model)
 }
 

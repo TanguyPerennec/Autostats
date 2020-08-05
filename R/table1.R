@@ -66,6 +66,8 @@ table1 <- function(DF,
 
       ##################################################
 
+      format_data(DF) ->DF
+
 
       ##################################################
       #                First two lines                 #
@@ -100,7 +102,7 @@ table1 <- function(DF,
             mean_vars <- aggregate(var ~ DF[, y], FUN = "mean", na.rm = T)
             sd_vars <- aggregate(var ~ DF[, y], FUN = "sd", na.rm = T)
             for (j in 1:levels_y) {
-               #pour chaque modalité
+               # for each modality
                mean_vars_level <- round(mean_vars[j, 2], 2)
                sd_vars_level <- round(sd_vars[j, 2], 2)
                ligne <-
@@ -124,10 +126,6 @@ table1 <- function(DF,
 
 
          else{#if non numeric
-            var <- stringr::str_to_lower(var)
-            var <- stringr::str_replace(var, "é", "e")
-            var <- stringr::str_replace(var, "è", "e")
-            var <- stringr::str_replace(var, "/", "")
             for (it in var) {
                if (!is.na(it)) {
                   if (stringr::str_length(it) > 40)
@@ -183,7 +181,7 @@ table1 <- function(DF,
                   } else{
                      clig <- fisher.test(var, DF[, y], simulate.p.value = TRUE)$p.value
                      clig <- signif(clig, 3)
-                     sign <- "‡"
+                     sign <- "*"
                   }
                }
             } else{

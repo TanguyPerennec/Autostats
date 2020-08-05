@@ -2,18 +2,18 @@
 % Please edit documentation in R/formulation.R
 \name{formulation}
 \alias{formulation}
-\title{Object to formule transformation}
+\title{Object to coerce objects to a formule object}
 \usage{
 formulation(object, y = NULL)
 }
 \arguments{
 \item{object}{object that can be coerced into a formula object}
 
-\item{y}{(optional) : the variable that will be the first term of the formula. If kept empty, y will be the first element in the object given to the function.}
+\item{y}{(optional) character : the variable that will be the first term of the formula. If kept empty, y will be the first element in the object given to the function.}
 }
 \value{
 formulation returns a formula object
 }
 \description{
-Object to formule transformation
+Object to coerce objects to a formule object
 }

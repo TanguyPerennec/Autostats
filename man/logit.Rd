@@ -4,12 +4,14 @@
 \alias{logit}
 \title{Function Logit}
 \usage{
-logit(DF, y = colnames(DF)[1], response = FALSE, auto = TRUE)
+logit(DF, y = colnames(DF)[1], response = FALSE, auto = FALSE, verbose = NULL)
 }
 \arguments{
 \item{DF}{a dataframe}
 
 \item{y}{(optional) a variable to explain by logit function. If kept empty, y is the first element of DF.}
+
+\item{verbose}{}
 }
 \value{
 

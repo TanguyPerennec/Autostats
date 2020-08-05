@@ -1,6 +1,3 @@
-source("R/progressbar.R")
-source("R/logit.R")
-
 #' Coerce a column into a binary column
 #'
 #' @param col column to change into a binary column
@@ -12,7 +9,7 @@ source("R/logit.R")
 tobinary <- function(col,
                      verbose = T)
 {
-   names(col) -> name
+   colnames(col) -> name
    levels_col <- levels(as.factor(col)) #get the levels of col (that should be 0 or 1)
 
    if (length(levels_col) != 2)
@@ -110,83 +107,161 @@ NA_separation <-
 
 
 
-NA_rm_for_glm <-
-   function(DF,
-            y,
-            rowlimit_factor = 10,
-            min_explicatives = 10,
+#' Removing of all NAs and change the dataframe if too many rows are deleted
+#'
+#' @param DF : the dataframe
+#' @param y : the variable to explain
+#' @param EPV : the event-per-variable threeshold.
+#' @param min_explicatives
+#' @param floor_pval
+#' @param verbose
+#' @param method_NA
+#' @param keep : the variable(s) to keep whathever are its significance and number of NA
+#' @param imputed_variables  : variables to be imputed if imputed method is selected in 'method_NA'.
+#'
+#' @return
+#' @import missForest
+#' @import VIM
+#' @export
+#'
+#' @examples
+NA_rm_for_glm <- function(DF,
+            y = colnames(DF)[1],
+            EPV = 10,
+            min_explicatives = 0.1*(ncol(DF)),
             floor_pval = 0.5,
-            verbose = T,
+            verbose = TRUE,
             method_NA = c("lessNA", "significance"),
-            keep = FALSE)
+            keep = FALSE,
+            kNN = NULL,
+            rf = NULL,
+            median = NULL,
+            mean=NULL,
+            NA_as_level = NULL)
 {
    DF <- as.data.frame(DF)
    explicatives1 <- colnames(DF)[colnames(DF) != y]
-   DF <- DF[!is.na(DF[,y]),]
    DF_complete <- DF[complete.cases(DF),]
    explicatives <- colnames(DF)[colnames(DF) != y]
 
-   if (nrow(DF_complete) < rowlimit_factor * length(DF_complete))
+   if (!is.null(kNN))
+   {
+      DF_complete <- suppressWarnings(VIM::kNN(DF,variable = kNN))
+   }
+   if (!is.null(rf))
+   {
+      DF_complete <- suppressWarnings(missForest::missForest(DF))
+   }
+   if (!is.null(median))
+   {
+      DF -> DF_complete
+      for (col in median)
+      {
+         DF_complete[,col][is.na(DF_complete[,col])] <- stats::median(DF[,col],na.rm = TRUE)
+      }
+   }
+   if (!is.null(mean))
+   {
+      DF -> DF_complete
+      for (col in mean)
+      {
+         DF_complete[,col][is.na(DF_complete[,col])] <- stats::mean(DF[,col],na.rm = TRUE)
+      }
+   }
+
+   if (!is.null(NA_as_level))
+   {
+      DF -> DF_complete
+      for (col in NA_as_level)
+      {
+         DF_complete[,col][is.na(DF_complete[,col])] <- "NC"
+      }
+   }
+
+   if (!is.null(method_NA))
    {
 
-      nb_NA <- apply(DF[, explicatives], 2, function(x) sum(is.na(x))) #nb NA by columns
-      nb_NA <- nb_NA[!(keep %in% names(nb_NA))]
-      nb_NA <- nb_NA[order(-nb_NA)]
-      i = 1
+      #Calculating EPV
+      events <- min(table(DF[,y]))
+      variables <- length(DF_complete)
+      actualEPV <- events/variables
 
-      if ("significance" %in% method_NA)
+      if (actualEPV < EPV)
       {
-         for (var in names(nb_NA))
+
+         nb_NA <- apply(DF[, explicatives], 2, function(x) sum(is.na(x))) #nb NA by columns
+         if (!is.logical(keep)) nb_NA <- nb_NA[!(keep %in% names(nb_NA))]
+         nb_NA <- nb_NA[order(-nb_NA)]
+         i = 1
+
+
+         if ("significance" %in% method_NA)
          {
-            DF_uni <- subset.data.frame(DF, select = c(y, var))
-            DF_uni <- DF_uni[complete.cases(DF_uni),]
-            if (nrow(DF_uni) < 5 || length(levels(as.factor(DF_uni[,2]))) < 2)
+            for (var in names(nb_NA))
             {
-               explicatives <- explicatives[explicatives != var]
-            }else
-            {
-               model <- stats::glm(formula = DF_uni[,y]~DF_uni[,var],family = "binomial")
-               p_valanova <- anova(model,formula(DF_uni[,y]~1),test = "Chisq")$Pr[2]
-               if (p_valanova > floor_pval)
-               {#if all pvals are > 0.5
+               DF_uni <- DF[, c(y, var)]
+               DF_uni <- DF_uni[complete.cases(DF_uni),]
+               if (nrow(DF_uni) < 5 || length(levels(as.factor(DF_uni[,2]))) < 2)
+               {
                   explicatives <- explicatives[explicatives != var]
-                  if (verbose)
-                     cat("\n\n\n",var," is non significant with overall population (",floor_pval," threeshold) and is deleted")
+               }else
+               {
+                  model <- stats::glm(formula = DF_uni[,y]~DF_uni[,var],family = "binomial")
+                  p_valanova <- anova(model,formula(DF_uni[,y]~1),test = "Chisq")$Pr[2]
+                  if (p_valanova > floor_pval)
+                  {#if all pvals are > 0.5
+                     explicatives <- explicatives[explicatives != var]
+                     if (verbose)
+                        cat("\n\n\n",var," is non significant with overall population (",floor_pval," threeshold) and is deleted")
+                  }
                }
             }
          }
-      }
 
-      DF <- DF[,c(y,explicatives)]
-      DF_complete <- DF[complete.cases(DF),]
+         DF <- DF[,c(y,explicatives)]
+         DF_complete <- DF[complete.cases(DF),]
 
-      if ("lessNA" %in% method_NA)
-      {
-         while (nrow(DF_complete) < rowlimit_factor * length(DF_complete) & (length(explicatives) > min_explicatives) & i < length(nb_NA))
+
+
+
+         if ("lessNA" %in% method_NA & sum(is.na(DF)) > 0 )
          {
-            nb_NA <- apply(DF[, explicatives], 2, function(x) sum(is.na(x))) #nb NA by columns
-            nb_NA <- nb_NA[!(keep %in% names(nb_NA))]
-            nb_NA <- nb_NA[order(-nb_NA)]
-            nb_NA <- nb_NA[nb_NA > 0]
-            explicatives <- explicatives[explicatives != names(nb_NA[1])]
-            progressbar(i = i,variable = names(nb_NA[1]),text = "Deleting columns... ",range = 5)
-            DF <- subset.data.frame(DF, select = c(y, explicatives))
-            DF_complete <- DF[complete.cases(DF), ]
-            i <- i + 1
+            while (nrow(DF_complete) < EPV * length(DF_complete) & (length(explicatives) > min_explicatives) & i < length(nb_NA))
+            {
+               nb_NA <- apply(DF[, explicatives], 2, function(x) sum(is.na(x))) #nb NA by columns
+               nb_NA <- nb_NA[!(keep %in% names(nb_NA))]
+               nb_NA <- nb_NA[order(-nb_NA)]
+               nb_NA <- nb_NA[nb_NA > 0]
+               explicatives <- explicatives[explicatives != names(nb_NA[1])]
+               progressbar(i = i,variable = names(nb_NA[1]),text = "Deleting columns... ",range = 5)
+               DF <- DF[ ,c(y, explicatives)]
+               DF_complete <- DF[complete.cases(DF), ]
+               i <- i + 1
+            }
          }
       }
    }
 
+
    DF_complete -> DF
    deleted_columns <-  explicatives1[!(explicatives1 %in% explicatives)]
-   if (verbose) cat("\n\n\nDeleted columns are :", deleted_columns)
-   return(DF_complete)
-
+   if (verbose & length(deleted_columns) != 0) cat("\n\n\nDeleted columns are :", deleted_columns)
+   return(try(as.data.frame(DF_complete)))
 }
 
 
 
 
+#' Checking factors
+#'
+#' @param vars
+#' @param confirmation
+#' @param DF dataframe : the dataframe to clean
+#' @param verbose (optional) logical : TRUE will display some informations in the console
+#' @return
+#' @export
+#'
+#' @examples
 checkforfactor <-
    function(DF,
             vars = colnames(DF),
@@ -196,35 +271,34 @@ checkforfactor <-
    DF <- as.data.frame(DF)
    for (var_i in length(vars):1)
    {
-      # Check for each variable 'var' in vars if numeric variable is constant
-      # and if factor as only one level
-      # and then deleate it if so
       var <- vars[var_i]
 
       if (is.numeric(DF[,var]))
       {
          as.factor(DF[,var]) -> DF[,var]
-         if (length(levels(DF[, var])) < 2) {#removes factor with only one level
+         if (length(levels(DF[, var])) < 2)
+         {#removes factor with only one level
             if (verbose) message("\n", var, " is constant and is deleted")
             vars <- vars[-var_i]
-         }
-         rep <- "N"
-         if (length(levels(DF[, var])) < 7) {
-            message("\n", var, " is a numeric variable with only",length(levels(DF[, var]))," different values and could be considered as a factor")
-            if (confirmation)
-            {
-               rep <- readline(paste0("Change",var,"into factor ? O/N"))
+            DF[,var] <- NULL
+         } else {
+            rep <- "N"
+            if (length(levels(DF[, var])) < 7 & length(levels(DF[, var])) > 1) {
+               message("\n", var, " is a numeric variable with only",length(levels(DF[, var]))," different values and could be considered as a factor")
+               if (confirmation)
+               {
+                  rep <- readline(paste0("Change",var,"into factor ? O/N  "))
+               }else
+               {
+                  rep <- "O"
+               }
+               if (rep != 'O') as.numeric(DF[,var]) -> DF[,var]
             }else
             {
-               rep <- "O"
+               as.numeric(DF[,var]) -> DF[,var]
             }
-            if (rep != 'O') as.numeric(DF[,var]) -> DF[,var]
-         }else
-         {
-            as.numeric(DF[,var]) -> DF[,var]
          }
-      }else
-      {#convert each non numeric into a factor and check whether they have one level or not
+      }else {#convert each non numeric into a factor and check whether they have one level or not
          as.factor(DF[,var]) -> DF[,var]
          if (length(levels(DF[, var])) < 2)
          {
@@ -232,6 +306,7 @@ checkforfactor <-
             if (verbose)
                message("\n", var, " has only one level and is deleted")
             vars <- vars[-var_i]
+            DF[,var] <- NULL
          }
       }
    }
@@ -241,30 +316,139 @@ checkforfactor <-
 
 
 
+#' Data formating
+#'
+#' @param DF : the dataframe to format
+#' @param type (optional) : 'plain' for no accent nor capital letter, 'no-plural' for get rid of plural differences between factors
+#'
+#' @return the dataframe with no accent nor capital letters
+#' @export
+#'
+#' @examples
 format_data <-
    function(DF,
-            type=NULL)
+            type=c("plain","no-plural"))
 {
    as.data.frame(DF) -> DF
+      colnames(DF) -> colnamesDF
 
-   if ("plain" %in% type)
-   {
       for (i in 1:length(DF))
       {
-         if (is.character(DF[,i]))
+         if ("plain" %in% type & is.character(DF[,i]))
          {
             DF[,i] <- stringr::str_to_lower(DF[,i])
-            DF[,i] <- stringr::str_replace_all(DF[,i],"[éèêë]","e")
-            DF[,i] <- stringr::str_replace_all(DF[,i],"[àâ]","a")
-            DF[,i] <- stringr::str_replace_all(DF[,i],"[ï]","i")
-            DF[,i] <- stringr::str_replace_all(DF[,i],"[ù]","u")
-            DF[,i] <- stringr::str_replace_all(DF[,i],"[ôö]","o")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00e9\\u00e8\\u00ea\\u00eb]","e")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00e0\\u00e2]","a")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00ef]","i")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00f9\\u00fa\\u00fc]","u")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00f4\\u00f6]","o")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00f1]","n")
+            DF[,i] <- stringr::str_replace_all(DF[,i],"[\\u00e6]","ae")
+         }
+
+
+         if ("no-plural" %in% type & is.character(DF[, i]))
+         {
+            string_levels <- levels(as.factor(DF[, i]))
+            for (level in string_levels)
+            {
+               words1 <- stringr::str_split(level," ")[[1]]
+               for (level2 in string_levels[string_levels != level])
+               {
+                  real_diff <- FALSE
+                  words2 <- stringr::str_split(level2," ")[[1]]
+                  if (length(words1) == length(words2))
+                  {
+                     for (l in seq(words1))
+                     {
+                        if (!(words1[l] == words2[l] || words1[l] == paste0(words2[l],"s")))
+                        {
+                           real_diff <- TRUE
+                        }
+                     }
+                     if (real_diff == FALSE)
+                     {
+                        DF[,i][DF[,i] == level] <- level2
+                        break
+                     }
+
+                  }
+               }
+            }
+         }
+
+      if ("no-fem" %in% type & is.character(DF[, i]))
+         {
+            string_levels <- levels(as.factor(DF[, i]))
+            for (level in string_levels)
+            {
+               words1 <- stringr::str_split(level," ")[[1]]
+               for (level2 in string_levels[string_levels != level])
+               {
+                  real_diff <- FALSE
+                  words2 <- stringr::str_split(level2," ")[[1]]
+                  if (length(words1) == length(words2))
+                  {
+                     for (l in seq(words1))
+                     {
+                        if (!(words1[l] == words2[l] || words1[l] == paste0(words2[l],"e")))
+                        {
+                           real_diff <- TRUE
+                        }
+                     }
+                     if (real_diff == FALSE)
+                     {
+                        DF[,i][DF[,i] == level] <- level2
+                        break
+                     }
+                  }
+               }
+            }
+      }
+
+         if ("no-femplu" %in% type & is.character(DF[, i]))
+         {
+            string_levels <- levels(as.factor(DF[, i]))
+            for (level in string_levels)
+            {
+               words1 <- stringr::str_split(level," ")[[1]]
+               for (level2 in string_levels[string_levels != level])
+               {
+                  real_diff <- FALSE
+                  words2 <- stringr::str_split(level2," ")[[1]]
+                  if (length(words1) == length(words2))
+                  {
+                     for (l in seq(words1))
+                     {
+                        if (!(words1[l] == words2[l] || words1[l] == paste0(words2[l],"es")))
+                        {
+                           real_diff <- TRUE
+                        }
+                     }
+                     if (real_diff == FALSE)
+                     {
+                        DF[,i][DF[,i] == level] <- level2
+                        break
+                     }
+                  }
+               }
+            }
          }
       }
-   }
+
+      if (is.character(DF[, i]))
+      {
+         DF[,i] <- stringr::str_squish(DF[,i])
+         DF[,i] <- stringr::str_trim(DF[,i])
+      }
+
+      colnames(DF) <- colnamesDF
 
    return(DF)
 }
+
+
+
 
 
 
@@ -273,15 +457,24 @@ format_data <-
 ######################################################
 
 
-data_prep_complete <-
-   function(DF,
-            y,
-            verbose = TRUE,
-            keep = FALSE
-   )
+#' Preparing datas for logistic regression
+#'
+#' @param DF dataframe : the dataframe to clean
+#' @param y (optional) character : the variable to explain
+#' @param verbose (optional) logical : TRUE will display some informations in the console
+#' @param keep (optional) vector : variables part of DF's columns that should not be deleted
+#'   in the data cleaning process
+#'
+#' @return \code{data_prep_complete} returns a dataframe ready for a logistic regression
+#' @export
+#'
+#' @examples
+data_prep_complete <- function(DF,
+                                 y=colnames(DF)[1],
+                                 verbose = TRUE,
+                                 keep = FALSE)
 {
-   verbose = T
-
+   keep -> variable_to_keep
    DF <- as.data.frame(DF)
    DF1 <- DF
 
@@ -291,24 +484,23 @@ data_prep_complete <-
    # Data prep of y
    DF[,y] <- tobinary(DF[,y])
 
-
-
    # get rid of NAs
-   DF <- NA_rm_for_glm(DF,y,keep = FALSE)
+   DF <- NA_rm_for_glm(DF,y,keep = variable_to_keep)
 
    # Clean constant variables
    DF <- checkforfactor(DF)
 
-   if (verbose)
-      cat("\n",(nrow(DF1) - nrow(DF))," rows deleted (",round(100*(nrow(DF1) - nrow(DF))/(nrow(DF1)),0),"%)","...........",nrow(DF),"rows remaining")
-
+   # Finally
    explicatives <- colnames(DF)[colnames(DF) != y]
-
-   if (verbose) cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
-   "It remains ",length(explicatives),"variables and ",nrow(DF),"observations
-   \n\n+-----------------------------------------------------------------------------------------------------------------+\n")
-
    DF <- as.data.frame(DF)
+
+   if (verbose)
+   {
+      cat("\n",(nrow(DF1) - nrow(DF))," rows deleted (",round(100*(nrow(DF1) - nrow(DF))/(nrow(DF1)),0),"%)","...........",nrow(DF),"rows remaining")
+      cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
+          "It remains ",length(explicatives),"variables and ",nrow(DF),"observations
+   \n\n+-----------------------------------------------------------------------------------------------------------------+\n")
+   }
 
    return(DF)
 }

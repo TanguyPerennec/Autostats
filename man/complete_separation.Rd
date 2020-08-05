@@ -13,7 +13,7 @@ complete_separation(var, y, DF, continue = FALSE)
 
 \item{DF}{the dataframe}
 
-\item{continue}{(optional)}
+\item{continue}{(optional) : whether the response should be apllied to all following variables.}
 }
 \value{
 
