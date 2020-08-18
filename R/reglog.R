@@ -253,7 +253,7 @@ reglog <- function(DF,
 
 
    # Variable selection
-   explicatives_multi <- multivariate_selection(DF[,c(y,explicatives)],y,...)
+   explicatives_multi <- multivariate_selection(DF[,c(y,explicatives)],y,keep = keep2)
    explicatives_multi <- explicatives_multi$vars_multi
    # Definitive model
    logit(DF[,c(y,explicatives_multi)]) -> mod_multi
