@@ -224,7 +224,7 @@ complete_separation <- function(var,
    if (is.numeric(DF[,var]) || length(levels(as.factor(DF[,var]))) == 2)
    {
       #dichotomous <- check_dichotomous(var,y,DF)
-      dicho_msg <- "(not advised)" #dEcommenter lorsque check_dicotomous
+      dicho_msg <- "(not advised)"
       #ifelse(
        #  dichotomous,
        #  paste0("(",var,"seems to be a dichotomous variation of ",y,")"),

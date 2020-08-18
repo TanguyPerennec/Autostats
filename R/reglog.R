@@ -1,6 +1,6 @@
 #' Logistic Regression Function
 #'
-#' @description reglog is able to perform logistic regression with variable selection and gives one matrix with variable names, odds-ratios,
+#' @description reglog is able to perform logistic regression with variable selection and gives as a result a matrix with variable names, odds-ratios,
 #'  confidence intervals and p-values of univariate and multivariate models.
 #'
 #' @usage reglog(DF,y,explicatives,...)
@@ -12,14 +12,9 @@
 #' @param method the method that will be used to select variables in the multivariate model.The default method is the backward elimination. See 'details' section for more informations.
 #' @param alpha num : significance threeshold used to delete non-significant variables in the multivariate model.
 #' @param verbose logical : if TRUE, explainations are displayed in the console while running the function.
-#' @param min_multivariate num : the minimum number of variables that should be kept in the multivariate model.
-#' If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.
 #' @param alpha_max num : maximum threeshold used to select the minimum multivariate variables wanted.
-#' @param method
 #' @param round num : number of digits to display in the final table.
-#' @param rowstimevariable
-#' @param confirmation
-#' @param keep
+#' @param keep all the variables that should be kept in the multivariate results
 #' @param exit specify where do you want to display the results : console (the default), excel (in a results.xlsx file), html (using kable)
 #'
 #'
@@ -31,20 +26,19 @@
 #' @import safeBinaryRegression
 #' @import xlsx
 #' @import MASS
-#'
+#' @import kableExtra
+#' @import readr
 #'
 #' @references Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17
 #' @references Heinze G, Schemper M. A solution to the problem of separation in logistic regression. Stat Med. 2002;21(16):2409-2419. doi:10.1002/sim.1047
 #' @examples
 reglog <- function(DF,
             y,
-            explicatives = colnames(DF)[colnames(DF) != y],
+            explicatives,
             alpha = 0.05,
             verbose = TRUE,
-            min_multivariate=2,
             alpha_max=0.2,
             round = 3,
-            method = "forward",
             rowstimevariable = 10,
             confirmation=FALSE,
             keep=FALSE,
@@ -61,33 +55,19 @@ reglog <- function(DF,
    #    Arguments verification / transformation     #
    ##################################################
 
-   params <- list(...)
+   # Y
+   if (missing(y))
+      y <- colnames(DF)[1]
+   if (!is.character(y) || !(y %in% colnames(DF)))
+      stop("y must be a character variable, part of DF")
 
-   if (is.data.frame(DF) || is.matrix(DF) || is.tbl(DF))
-   {
-      DF <- as.data.frame(DF,row.names = NULL)
-      if (length(colnames(DF) != length(unique(colnames(DF)))))
-      {
-         message("Column names are not uniques, you should rename the variable names first to avoid errors")
-      }
-   } else
-   {
-      stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
-   }
-
-   if (make.names(colnames(DF)) != colnames(DF))
-   {
-      message("colnames are not valid, 'make.names()' is used to have valid colnames")
-      make.names(colnames(DF)) -> (colnames(DF))
-      make.names(explicatives) -> (explicatives)
-      make.names(y) -> (y)
-   }
-
-
+   ## Explicatives
+   if (missing(explicatives))
+      explicatives <- colnames(DF)[colnames(DF) != y]
    if (!is.vector(explicatives))
       stop("explicatives should be a vector of characters")
 
-   #Removes explicatives not in DF
+   # Removes explicatives not in DF
    explicatives_out_DF <- explicatives[!(explicatives %in% colnames(DF))]
    if (length(explicatives_out_DF) > 0)
    {
@@ -106,37 +86,40 @@ reglog <- function(DF,
       stop(msg_error)
    }
 
-
-   if (!is.character(y) || !(y %in% colnames(DF)))
-      stop("y must be a character variable, part of DF")
-
-
+   # Removes y from explicatives
    if (y %in% explicatives)
    {
       message('y is part of "explicatives" and is removed from it')
       explicatives <- explicatives[explicatives != y]
    }
-   explicatives -> explicatives2
+   explicative2 <- explicatives
+
+
+   ## Dataframe
+   if (is.data.frame(DF) || is.matrix(DF) || is.tbl(DF))
+   {
+      DF <- as.data.frame(DF,row.names = NULL)
+      if (make.names(colnames(DF)) != colnames(DF))
+      {
+         message("column names are not valid, 'make.names()' is used to have valid colnames")
+         make.names(colnames(DF)) -> colnames(DF)
+         make.names(explicatives) -> explicatives
+         make.names(y) -> y
+      }
+   } else
+   {
+      stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
+   }
 
 
    if (!is.logical(verbose))
       stop("'verbose' must be logical")
    verbose -> verbose2
 
-
-   if (!is.numeric(min_multivariate))
-      stop("min_multivariate must be numeric")
-   min_multivariate -> min_multivariate2
-
-
    if (!is.numeric(round) || round <= 0)
       stop("round must be numeric and positive")
    round -> round2
 
-
-   if (!(method %in% c("backward","forward","stepwise","PS")))
-      stop("'method' should be one of this methods : backward, forward, stepwise, PS")
-   method -> method2
 
    if (!is.logical(confirmation))
       stop("'confirmation' must be logical")
@@ -159,7 +142,8 @@ reglog <- function(DF,
    ##################################################
    if (verbose) cat("
 \n
-\n---+-----------------------------+--------------------------------------------------------------------------------------------
+\n
+-----+-----------------------------+--------------------------------------------------------------------------------------------
      |                             |
      |      1) DATA CLEANING       |
      |                             |
@@ -196,7 +180,8 @@ reglog <- function(DF,
    ##################################################
    if (verbose) cat(
       "\n
-\n---+-----------------------------+--------------------------------------------------------------------------------------------
+\n
+-----+-----------------------------+--------------------------------------------------------------------------------------------
      |                             |
      |    2) UNIVARIATE MODEL      |
      |                             |
@@ -204,10 +189,8 @@ reglog <- function(DF,
 ")
 
 
-
    rslt <- matrix(ncol = 7, nrow = (length(vect_explicative) + 1))
    rownames(rslt) <- c("",vect_explicative)
-
 
    getinfo_glm <- function(mod,k,var)
    {
@@ -261,15 +244,16 @@ reglog <- function(DF,
    ##################################################
    if (verbose) cat("
 \n
-\n---+-----------------------------+--------------------------------------------------------------------------------------------
+\n
+-----+-----------------------------+--------------------------------------------------------------------------------------------
      |                             |
      |    3) MULTIVARIATE MODEL    |
      |                             |
      +-----------------------------+\n")
 
-   alpha_multi <- alpha
+
    # Variable selection
-   explicatives_multi <- multivariate_selection(DF[,c(y,explicatives)],y,keep = keep2,method = method2)
+   explicatives_multi <- multivariate_selection(DF[,c(y,explicatives)],y,...)
    explicatives_multi <- explicatives_multi$vars_multi
    # Definitive model
    logit(DF[,c(y,explicatives_multi)]) -> mod_multi

@@ -1,6 +1,6 @@
 Package: autostats
 Title: Automated medical science statistics
-Version: 0.0.6
+Version: 0.0.7
 Authors@R: 
    c(person(given = "Tanguy",
            family = "Perennec",
@@ -10,12 +10,12 @@ Authors@R:
            family = "Wargny",
            role = c("aut")
            ),
-   person(given = "Gourraud",
-   family = "Pierre-Antoine",
+   person(given = "Pierre-Antoine",
+   family = "Gourraud",
    role = c("aut")
    )
     )
-Description: The package is able to performs basic statistics with a complete table 1 and logistic regression. Logistic regression can be performed with automated variable selection. 
+Description: The package performs basic statistics with a complete table 1 with statistical tests and logistic regression. Logistic regression can be performed with automated variable selection. 
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
@@ -42,4 +42,6 @@ Imports:
     missForest,
     VIM,
     MASS,
-    questionr
+    questionr,
+    kableExtra,
+    readr

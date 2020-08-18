@@ -18,22 +18,21 @@ Takes all columns but y from the dataframe if kept empty.}
 
 \item{verbose}{logical : if TRUE, explainations are displayed in the console while running the function.}
 
-\item{min_multivariate}{num : the minimum number of variables that should be kept in the multivariate model.
-If the number of significant variables using alpha threeshold is under min_multivariate, alpha is increased by 0.02 points till alpha_max is reached.}
-
 \item{alpha_max}{num : maximum threeshold used to select the minimum multivariate variables wanted.}
 
 \item{round}{num : number of digits to display in the final table.}
 
-\item{method}{the method that will be used to select variables in the multivariate model.The default method is the backward elimination. See 'details' section for more informations.}
+\item{keep}{all the variables that should be kept in the multivariate results}
 
 \item{exit}{specify where do you want to display the results : console (the default), excel (in a results.xlsx file), html (using kable)}
+
+\item{method}{the method that will be used to select variables in the multivariate model.The default method is the backward elimination. See 'details' section for more informations.}
 }
 \value{
 reglog returns a matrix with all OR obtain from univariate model and OR obtain from the multivariate model
 }
 \description{
-reglog is able to perform logistic regression with variable selection and gives one matrix with variable names, odds-ratios,
+reglog is able to perform logistic regression with variable selection and gives as a result a matrix with variable names, odds-ratios,
 confidence intervals and p-values of univariate and multivariate models.
 }
 \references{

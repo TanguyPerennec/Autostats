@@ -7,8 +7,8 @@
 multivariate_selection(
   DF,
   y,
-  explicatives = colnames(DF)[colnames(DF) != y],
-  keep = FALSE,
+  explicatives,
+  keep,
   principal_factor = FALSE,
   method = "backward",
   criteria = "deviance",

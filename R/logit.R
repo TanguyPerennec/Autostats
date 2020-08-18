@@ -2,9 +2,8 @@
 #'
 #' @param DF a dataframe
 #' @param y (optional) a variable to explain by logit function. If kept empty, y is the first element of DF.
-#' @param response
-#' @param auto
-#' @param verbose
+#' @param auto : if TRUE, the decision of method regarding complete separation will be automatic
+#' @param verbose : wheter explaination should be displayed in the console
 #'
 #' @return
 #' @export
@@ -14,7 +13,6 @@
 #' @examples
 logit <- function(DF,
             y = colnames(DF)[1],
-            response = FALSE,
             auto = FALSE,
             verbose = NULL)
 
@@ -56,7 +54,6 @@ logit <- function(DF,
    # 3) Regression
    ##################################################
    error_glm <- TRUE
-   response <- FALSE
    firth_method <- FALSE
 
    while (error_glm)

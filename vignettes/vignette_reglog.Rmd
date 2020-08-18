@@ -13,9 +13,8 @@ library(kableExtra)
 library(tidyverse)
 library(readr)
    DF <- read_delim("../data/thesepsyclean.csv",";", escape_double = FALSE, trim_ws = TRUE)
-   DF[, -1] -> DF
    DF -> DF_sep
-   y <- "Récidive"
+   y <- "Recidive"
 #####
 DF$antecedent_familiaux[DF$antecedent_familiaux != "non" & !is.na(DF$antecedent_familiaux)] <- "oui"
 DF$scolarite[DF$scolarite == "ITEP"] <- "difficultés scolaires"
@@ -208,7 +207,7 @@ La fonction *formulation()* permet de créer un objet de class 'formule' à part
 #Pour une formule sur l'ensemble du dataframe :
 formulation(DF)
 #Pour un vecteur
-vector <-  c("Récidive","Age","Sexe")
+vector <-  c("Recidive","Age","Sexe")
 formulation(vector)
 ```
 
@@ -258,50 +257,50 @@ Le "sens" est donné par l'argument **"method"** :<br>
 Au total, il y a donc 7\*3+2+1+1 = **25 méthodes de sélection possibles**.
 
 ```{r mvs}
-s_dev_back <- multivariate_selection(DF,y = "Récidive",criteria = "deviance",method = "backward")
+s_dev_back <- multivariate_selection(DF,y = "Recidive",criteria = "deviance",method = "backward")
 s_dev_back
 ```
 
 ```{r}
-s_AIC_back <- multivariate_selection(DF,y = "Récidive",criteria = "AIC",method = "backward")
+s_AIC_back <- multivariate_selection(DF,y = "Recidive",criteria = "AIC",method = "backward")
 s_AIC_back
 ```
 
 ```{r}
-s_BIC_back <- multivariate_selection(DF,y = "Récidive",criteria = "BIC",method = "backward")
+s_BIC_back <- multivariate_selection(DF,y = "Recidive",criteria = "BIC",method = "backward")
 s_BIC_back
 ```
 
 ```{r}
-s_dev_for <- multivariate_selection(DF,y = "Récidive",criteria = "deviance",method = "forward")
+s_dev_for <- multivariate_selection(DF,y = "Recidive",criteria = "deviance",method = "forward")
 s_dev_for
 ```
 
 ```{r}
-s_AIC_for <- multivariate_selection(DF,y = "Récidive",criteria = "AIC",method = "forward")
+s_AIC_for <- multivariate_selection(DF,y = "Recidive",criteria = "AIC",method = "forward")
 s_AIC_for
 ```
 
 ```{r}
-s_BIC_for <- multivariate_selection(DF,y = "Récidive",criteria = "BIC",method = "forward")
+s_BIC_for <- multivariate_selection(DF,y = "Recidive",criteria = "BIC",method = "forward")
 s_BIC_for
 ```
 
 ```{r}
-s_BIC_for <- multivariate_selection(DF,y = "Récidive",criteria = "deviance",method = "forward")
+s_BIC_for <- multivariate_selection(DF,y = "Recidive",criteria = "BIC",method = "forward")
 s_BIC_for
 ```
 
 ```{r}
-s_dev_forstep <- multivariate_selection(DF,y = "Récidive",criteria = "deviance",method = "forward stepwise")
-s_AIC_forstep <- multivariate_selection(DF,y = "Récidive",criteria = "AIC",method = "forward stepwise")
-s_BIC_forstep <- multivariate_selection(DF,y = "Récidive",criteria = "BIC",method = "forward stepwise")
+s_dev_forstep <- multivariate_selection(DF,y = "Recidive",criteria = "deviance",method = "forward stepwise")
+s_AIC_forstep <- multivariate_selection(DF,y = "Recidive",criteria = "AIC",method = "forward stepwise")
+s_BIC_forstep <- multivariate_selection(DF,y = "Recidive",criteria = "BIC",method = "forward stepwise")
 ```
 
 ```{r}
-s_dev_backstep <- multivariate_selection(DF,y = "Récidive",criteria = "deviance",method = "backward stepwise")
-s_AIC_backstep <- multivariate_selection(DF,y = "Récidive",criteria = "AIC",method = "backward stepwise")
-s_BIC_backstep <- multivariate_selection(DF,y = "Récidive",criteria = "BIC",method = "backward stepwise")
+s_dev_backstep <- multivariate_selection(DF,y = "Recidive",criteria = "deviance",method = "backward stepwise")
+s_AIC_backstep <- multivariate_selection(DF,y = "Recidive",criteria = "AIC",method = "backward stepwise")
+s_BIC_backstep <- multivariate_selection(DF,y = "Recidive",criteria = "BIC",method = "backward stepwise")
 
 ```
 
@@ -384,7 +383,7 @@ for (i in 1:nbre)
   newDF <- DF[colDF, ]
   newDF$toxiques <- NULL
   s_dev_back <- multivariate_selection(newDF,
-                           y = "Récidive",
+                           y = "Recidive",
                            criteria = "BIC",
                            method = "backward")
   for (var in colnames(DF)[colnames(DF) != y])

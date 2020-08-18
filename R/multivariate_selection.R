@@ -18,8 +18,8 @@
 multivariate_selection <-
    function(DF,
             y,
-            explicatives = colnames(DF)[colnames(DF) != y],
-            keep=FALSE,
+            explicatives,
+            keep,
             principal_factor=FALSE,
             method = "backward",
             criteria = "deviance",
@@ -34,15 +34,31 @@ multivariate_selection <-
       options("getSymbols.warning4.0" = FALSE)
 
 
+      ##################################################
+      #    Arguments verification / transformation     #
+      ##################################################
+
+      if (missing(explicatives))
+         explicatives <- colnames(DF)[colnames(DF) != y]
+
+      if (missing(keep))
+      {
+         keep = FALSE
+         message("no keep variables have been provided")
+      }
+
+      if (!(criteria  %in% c("deviance", "AIC", "BIC")))
+         stop("criteria is not on the list")
+
+
 
       models_test <- function(model,
                               y,
                               var_diff,
                               ...)
       {
-         if (!(criteria  %in% c("deviance", "AIC", "BIC")))
-            stop("criteria is not on the list")
 
+         # Get the formula of the model to compare from the model and the variable that differ
          formule_diff_terms <- attr(model$terms,"term.labels")
          if (var_diff %in% formule_diff_terms)
          {
@@ -51,6 +67,7 @@ multivariate_selection <-
             formule_diff_terms <- c(formule_diff_terms,var_diff)
          }
          formule_diff <- formulation(c(y,formule_diff_terms))
+
 
          if (criteria  == "deviance")
          {

@@ -4,14 +4,16 @@
 \alias{logit}
 \title{Function Logit}
 \usage{
-logit(DF, y = colnames(DF)[1], response = FALSE, auto = FALSE, verbose = NULL)
+logit(DF, y = colnames(DF)[1], auto = FALSE, verbose = NULL)
 }
 \arguments{
 \item{DF}{a dataframe}
 
 \item{y}{(optional) a variable to explain by logit function. If kept empty, y is the first element of DF.}
 
-\item{verbose}{}
+\item{auto}{: if TRUE, the decision of method regarding complete separation will be automatic}
+
+\item{verbose}{: wheter explaination should be displayed in the console}
 }
 \value{
 
