@@ -11,7 +11,8 @@ table1(
   overall = TRUE,
   mutation = 40,
   legend = FALSE,
-  title = FALSE
+  title = FALSE,
+  exit = "excel"
 )
 }
 \arguments{

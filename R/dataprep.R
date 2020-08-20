@@ -201,7 +201,7 @@ NA_rm_for_glm <- function(DF,
             {
                DF_uni <- DF[, c(y, var)]
                DF_uni <- DF_uni[complete.cases(DF_uni),]
-               if (nrow(DF_uni) < 5 || length(levels(as.factor(DF_uni[,2]))) < 2)
+               if (nrow(DF_uni) < 5 || length(levels(as.factor(DF_uni[,2]))) < 2 || 0 %in% table(DF_uni[ ,2]) )
                {
                   explicatives <- explicatives[explicatives != var]
                }else

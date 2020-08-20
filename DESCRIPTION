@@ -44,4 +44,5 @@ Imports:
     MASS,
     questionr,
     kableExtra,
-    readr
+    readr,
+    table1
