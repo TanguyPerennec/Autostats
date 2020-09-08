@@ -178,6 +178,11 @@ NA_rm_for_glm <- function(DF,
    if (!is.null(method_NA))
    {
 
+      if (verbose)
+      {
+         cat("We delete all rows which are not complete :")
+      }
+
       #Calculating EPV
       events <- min(table(DF[,y]))
       variables <- length(DF_complete)
@@ -479,7 +484,7 @@ data_prep_complete <- function(DF,
    DF <- as.data.frame(DF)
 
    # Data prep of y
-   DF[,y] <- tobinary(DF[,y])
+   DF[, y] <- tobinary(DF[, y])
    DF <- as.data.frame(DF)
 
    # get rid of NAs
