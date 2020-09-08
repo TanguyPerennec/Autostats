@@ -7,22 +7,20 @@
 #' @export
 #' @import stringr
 tobinary <- function(col,
-                     verbose = T)
+                     verbose = TRUE)
 {
-   colnames(col) -> name
+
    levels_col <- levels(as.factor(col)) #get the levels of col (that should be 0 or 1)
 
    if (length(levels_col) != 2)
-      stop("col should be a factor with 2 levels")
+      stop("the column provided should be a factor with 2 levels")
 
    if (FALSE %in% (levels_col %in% c(0, 1))) {
-      col <- as.character(col) # prevents errors if DF[,col] is a factor
+      col <- as.character(col) # prevents errors if the column is a already a factor
       stringr::str_detect(levels_col, "non") -> non_position
       stringr::str_detect(levels_col, "no ") -> no_position
       stringr::str_detect(levels_col, "not ") -> not_position
-      if (non_position ||
-          no_position ||
-          not_position)
+      if (non_position || no_position || not_position)
       {
          #if there is a level with "no " or "non" or "not " in it, it will be the 0 level
          if (!is.na(match(TRUE, non_position)))
@@ -35,20 +33,19 @@ tobinary <- function(col,
          col[col != 0] <- 1
       } else
       {
-         #else it will be the first that will be 0
+         #else it will be the first level provided that will be 0
          col[col == levels_col[1]] <- 0
          col[col == levels_col[2]] <- 1
       }
       if (verbose)
          cat(
-            name,
-            '\n has been changed to 0/1 factor with ',
+            'column has been changed to 0/1 factor with ',
             levels_col[1],
             ' = 0 and ',
             levels_col[2],
             ' = 1'
          )
-   }
+   }else {}
    col <- as.factor(col)
    return(col)
 }
@@ -325,9 +322,8 @@ checkforfactor <-
 #' @export
 #'
 #' @examples
-format_data <-
-   function(DF,
-            type=c("plain","no-plural"))
+format_data <- function(DF,
+                        type=c("plain","no-plural"))
 {
    as.data.frame(DF) -> DF
       colnames(DF) -> colnamesDF
@@ -480,9 +476,11 @@ data_prep_complete <- function(DF,
 
    # Caractere preparation
    DF <- format_data(DF)
+   DF <- as.data.frame(DF)
 
    # Data prep of y
    DF[,y] <- tobinary(DF[,y])
+   DF <- as.data.frame(DF)
 
    # get rid of NAs
    DF <- NA_rm_for_glm(DF,y,keep = variable_to_keep)

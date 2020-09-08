@@ -34,8 +34,9 @@
 #' @examples
 reglog <- function(DF,
             y,
-            explicatives,
+            explicatives = colnames(DF)[colnames(DF) != y],
             alpha = 0.05,
+            dataprep = TRUE,
             verbose = TRUE,
             alpha_max=0.2,
             round = 3,
@@ -62,8 +63,6 @@ reglog <- function(DF,
       stop("y must be a character variable, part of DF")
 
    ## Explicatives
-   if (missing(explicatives))
-      explicatives <- colnames(DF)[colnames(DF) != y]
    if (!is.vector(explicatives))
       stop("explicatives should be a vector of characters")
 
@@ -99,6 +98,7 @@ reglog <- function(DF,
    if (is.data.frame(DF) || is.matrix(DF) || is.tbl(DF))
    {
       DF <- as.data.frame(DF,row.names = NULL)
+      DF <- DF[,c(y,explicatives)]
       if (make.names(colnames(DF)) != colnames(DF))
       {
          message("column names are not valid, 'make.names()' is used to have valid colnames")
@@ -140,7 +140,9 @@ reglog <- function(DF,
    ##################################################
    #               1) DATA CLEANING                 #
    ##################################################
-   if (verbose) cat("
+   if (dataprep == TRUE) {
+
+      if (verbose) cat("
 \n
 \n
 -----+-----------------------------+-----------------------------------------------------------
@@ -149,10 +151,11 @@ reglog <- function(DF,
      |                             |
      +-----------------------------+\n")
 
-   DF <- data_prep_complete(DF,y,verbose = TRUE,keep = keep2)
-   explicatives <- colnames(DF)[colnames(DF) != y]
+      DF <- data_prep_complete(DF,y,verbose = TRUE,keep = keep2,...)
 
-   ##################################################
+      ##################################################
+
+   }
 
 
    # Constructing 'vect_explicative'
@@ -297,7 +300,7 @@ reglog <- function(DF,
       if ("console" %in% exit)
          print(rslt)
       if ("html" %in% exit)
-         rslt <- kabble(rslt)
+         rslt <- knitr::kable(rslt)
 
 
       return(rslt)

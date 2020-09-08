@@ -4,7 +4,7 @@
 \alias{tobinary}
 \title{Coerce a column into a binary column}
 \usage{
-tobinary(col, verbose = T)
+tobinary(col, verbose = TRUE)
 }
 \arguments{
 \item{col}{column to change into a binary column}
