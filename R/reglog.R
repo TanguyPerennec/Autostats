@@ -299,9 +299,25 @@ reglog <- function(DF,
          )
       if ("console" %in% exit)
          print(rslt)
-      if ("html" %in% exit)
-         rslt <- knitr::kable(rslt)
+      if ("html" %in% exit) {
+         rslt <- as.data.frame(rslt[-1,])
+         colnames(rslt) = c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate")
 
+         rslt <- flextable(rslt, col_keys =  c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate"))
+
+         rslt <- delete_part(rslt,part = "header")
+         rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "OR",IC_univariate = "IC95%",pval_univariate = "p-value",OR_multivariate = "OR",IC_multivariate = "IC95%",pval_multivariate = "p-value", top = FALSE)
+         rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "univariate modele",IC_univariate = "univariate modele",pval_univariate = "univariate modele",OR_multivariate = "multivariate modele",IC_multivariate = "multivariate modele",pval_multivariate = "multivariate modele", top = TRUE)
+
+         rslt <- merge_at(rslt, part = "header",i=1:1,j=2:4)
+         rslt <- merge_at(rslt, part = "header",i = 1:1,j=5:7)
+         rslt <- theme_booktabs(rslt)
+
+      }
+
+      cat('
+          done !
+          ')
 
       return(rslt)
 }
