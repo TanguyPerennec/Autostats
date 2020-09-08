@@ -22,7 +22,7 @@ devtools::install_github("TanguyPerennec/Autostats")
 ## Getting started
 
 ``` r
-library(tidyr)
+library(autostats)
 ```
 
 Autostats functions are :
