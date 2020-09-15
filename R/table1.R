@@ -13,6 +13,7 @@
 #' @import stringr
 #' @import stats
 #' @import table1
+#' @import flextable
 table1 <- function(DF,
             y,
             ynames = NULL,
@@ -88,13 +89,14 @@ table1 <- function(DF,
    {
       ligne2[k + 1] <- paste0("N = ", table(DF[, y])[k]) #number of observations for each levels of y
    }
+   numbers_observation <- ligne2[1:levels_y+1]
    tabf <- rbind(tabf, ligne2)
    ##################################################
 
 
    y_index <- match(y, colnames(DF))
    DF_without_y <- DF[, -y_index]
-   i <- 1
+   i <- 0
 
    ### loop for each characteristics (var) ###
    space <- 20
@@ -154,9 +156,11 @@ table1 <- function(DF,
                      p <- signif(t.test(var ~ DF[, y],var.equal = TRUE)$p.value, 3)
                   } else{
                      p <- signif(t.test(var ~ DF[, y],var.equal = FALSE)$p.value, 3)
+                     p <- paste0(p," (a)")
                   }
                } else {
                   p <- signif(wilcox.test(var ~ DF[, y])$p.value,3)
+                  p <- paste0(p," (c)")
                }
             } else {
                p <- "-"
@@ -217,13 +221,12 @@ table1 <- function(DF,
                   condition_chi2_B <- FALSE
                }
                if (condition_chi2_B) {
-                  clig <-
-                     chisq.test(var, DF[, y])$p.value                    # Chi2 test
+                  clig <- chisq.test(var, DF[, y])$p.value                    # Chi2 test
                   clig <- signif(clig, 3)
                } else{
                   clig <- fisher.test(var, DF[, y], simulate.p.value = TRUE)$p.value
                   clig <- signif(clig, 3)
-                  sign <- "*"
+                  sign <- " (b)"
                }
             }
          } else{
@@ -251,8 +254,7 @@ table1 <- function(DF,
             ligne <- c(ligne, paste0(clig, sign))
             tabf <- rbind(tabf, ligne) #ajout de la ligne au tableau
          } else{
-            ligne <-
-               c(paste0(varname, " - no. (%)"),
+            ligne <- c(paste0(varname, " - no. (%)"),
                  rep(" ", levels_y),
                  paste0(clig, sign))
             tabf <- rbind(tabf, ligne)
@@ -280,14 +282,6 @@ table1 <- function(DF,
    rslt <- rslt[-1, ]
    ###
 
-   if (legend) {
-      text_legend <-
-         "p-values are obtained with a Chi2 or Fisher exact test (‡) for categorical variables and by student test for continuous variables"
-      rslt$legend <- text_legend
-   } else{
-      text_legend <- NULL
-   }
-
    if (title) {
       title_text <- "Table 1. Patients baseline characteristics by study group"
       rslt$title <- text_legend
@@ -295,6 +289,30 @@ table1 <- function(DF,
       title_text <- NULL
    }
 
+   if ("html" %in% exit)
+   {
+      rslt <- as.data.frame(rslt[-1,])
+      colsy <- vector()
+      for (n in seq(ynames))
+      {
+         colsy[n] <- paste(ynames[n],numbers_observation[n],sep="\n")
+      }
+      colnames(rslt) <- c("characteristics",colsy,"p_value")
+
+      rslt <- flextable(rslt, col_keys = c("characteristics",colsy,"p_value"))
+
+      rslt <- add_footer(rslt, characteristics = "p-values have been obtained form a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
+                         - a : Student test with Welch approximation
+                         - b : Fisher's exact test
+                         - c : Wilcoxon test" )
+      rslt <- merge_at(rslt, j = 1:(levels_y+2), part = "footer")
+      rslt <- valign(rslt, valign = "bottom", part = "footer")
+      rslt <- add_header_lines(rslt,"Table 1. Patients baseline characteristics by study group")
+      rslt %>% fontsize(i = 1, part = "header", size = 20) %>%
+         bold(i = 1, part = "header", bold = TRUE) -> rslt
+      rslt <- theme_booktabs(rslt)
+      rslt <- autofit(rslt)
+   }
 
    return(rslt)
 
