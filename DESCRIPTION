@@ -43,7 +43,6 @@ Imports:
     VIM,
     MASS,
     questionr,
-    kableExtra,
     readr,
     table1,
     flextable

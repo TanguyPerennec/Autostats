@@ -99,7 +99,6 @@ table1 <- function(DF,
    i <- 0
 
    ### loop for each characteristics (var) ###
-   space <- 20
 
    for (var in DF_without_y) {
       i <- i + 1
@@ -284,7 +283,6 @@ table1 <- function(DF,
 
    if (title) {
       title_text <- "Table 1. Patients baseline characteristics by study group"
-      rslt$title <- text_legend
    } else{
       title_text <- NULL
    }
