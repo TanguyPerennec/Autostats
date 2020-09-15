@@ -45,7 +45,7 @@ Autostats functions are :
 ## Related work
 
 Autostats will be used in an simulation project of multivariate logistic
-regression selection so as to provide a best understanding of
+regression selection so as to provide a better understanding of
 multivariate selection process.
 
 -----
