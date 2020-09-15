@@ -17,6 +17,9 @@ table1 <- function(DF,
             y,
             ynames = NULL,
             overall = TRUE,
+            tests = TRUE,
+            norm_test = TRUE,
+            Khi2 = TRUE,
             mutation = 40,
             legend = FALSE,
             title = FALSE,
@@ -105,8 +108,9 @@ table1 <- function(DF,
 
       if (is.numeric(var))
       {
-         mean_vars <- aggregate(var ~ DF[, y], FUN = "mean", na.rm = T)
-         sd_vars <- aggregate(var ~ DF[, y], FUN = "sd", na.rm = T)
+         mean_vars <- aggregate(var ~ DF[, y], FUN = "mean")
+         sd_vars <- aggregate(var ~ DF[, y], FUN = "sd")
+         length_vars <- aggregate(var ~ DF[, y], FUN = "length")
          for (j in 1:levels_y)
          {
             # for each modality
@@ -114,18 +118,49 @@ table1 <- function(DF,
             sd_vars_level <- round(sd_vars[j, 2], 2)
             ligne <- c(ligne, paste0(mean_vars_level, "±", sd_vars_level))
          }
+         # 1. Verification des conditions d'application
          verif <- TRUE
-         for (lev in margin.table(table(var, DF[, y]), 2))
+         ncst <- TRUE
+         p <- "-"
+         if (nrow(mean_vars) == levels_y)
          {
-            if (lev == 0)
-               verif <- FALSE
-         }#verif prevents to have a table with 0 in a level
-         if (verif & sd(var, na.rm = T) != 0)
-         {
-            p <- signif(t.test(var ~ DF[, y])$p.value, 3)
-         } else
-         {
-            p <- "-"
+            for (var_mod in 1:levels_y)
+            {
+               if (length_vars[var_mod,2] < 8)
+               {
+                  ncst <- FALSE
+               }
+            }
+            if (ncst & !(NA %in% sd_vars[,2]))
+            {
+               for (var_mod in 1:levels_y)
+               {
+                  if (length_vars[var_mod,2] < 31 & length_vars[var_mod,2] > 7 & sd_vars[var_mod,2] != 0)
+                  {
+                     p_shapiro <- shapiro.test(var[DF[,y] == levels(DF[, y])[var_mod]])$p.value
+                     if (p_shapiro < 0.05)
+                        verif <- FALSE
+                  }
+               }
+               variance_equal <- ifelse(var.test(var ~ DF[, y])$p.value > 0.05,TRUE,FALSE)
+            }
+            if (ncst & sd(var, na.rm=TRUE) != 0)
+            {
+               # Conditions d'application = loi normale ou n > 30 respectées si verif == TRUE
+               if (verif)
+               {
+                  if (variance_equal)
+                  {
+                     p <- signif(t.test(var ~ DF[, y],var.equal = TRUE)$p.value, 3)
+                  } else{
+                     p <- signif(t.test(var ~ DF[, y],var.equal = FALSE)$p.value, 3)
+                  }
+               } else {
+                  p <- signif(wilcox.test(var ~ DF[, y])$p.value,3)
+               }
+            } else {
+               p <- "-"
+            }
          }
          ligne <- c(ligne, p)
          tabf <- rbind(tabf, ligne)
@@ -198,11 +233,14 @@ table1 <- function(DF,
 
          ## Variable with 2 levels
          if (length(levels(var)) == 2) {
-            if (levels(var)[1] == "non" || levels(var)[1] == "no") {
-               var <- if(levels(var)[1] == "no"){
-                  relevel(var, "yes")
-                  }else{relevel(var, "oui")}
-            }
+            #
+            #if (levels(var)[1] == "non" || levels(var)[1] == "no")
+            #   {
+            #   var <- if(levels(var)[1] == "no"){
+            #      relevel(var, "yes")
+             #  }else{
+            #         relevel(var, "oui")}
+           # }
             ligne <- paste0(ligne, " (", levels(var)[1], ") - no. (%)")
 
             for (j in 1:levels_y) {

@@ -1,6 +1,6 @@
 Package: autostats
 Title: Automated medical science statistics
-Version: 0.0.8
+Version: 0.0.9
 Authors@R: 
    c(person(given = "Tanguy",
            family = "Perennec",

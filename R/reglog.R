@@ -26,7 +26,7 @@
 #' @import safeBinaryRegression
 #' @import xlsx
 #' @import MASS
-#' @import kableExtra
+#' @import flextable
 #' @import readr
 #'
 #' @references Bursac, Z., Gauss, C.H., Williams, D.K. et al. Purposeful selection of variables in logistic regression. Source Code Biol Med 3, 17 (2008). https://doi.org/10.1186/1751-0473-3-17
@@ -164,6 +164,7 @@ reglog <- function(DF,
    as.data.frame(DF) -> DF
    n = 1
    for (var in explicatives) {#making a vector with the name of the variable displayed as many times as (levels - 1)
+      print(var)
       if (is.numeric(DF[, var])) {
          vect_explicative[n] <- var
          n <- n + 1
