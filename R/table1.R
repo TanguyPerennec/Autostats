@@ -276,14 +276,19 @@ table1 <- function(DF,
 
          ## Variable with 2 levels
          if (length(levels(var)) == 2) {
-            #
-            #if (levels(var)[1] == "non" || levels(var)[1] == "no")
-            #   {
-            #   var <- if(levels(var)[1] == "no"){
-            #      relevel(var, "yes")
-             #  }else{
-            #         relevel(var, "oui")}
-           # }
+
+            if (levels(var)[1] == "non" || levels(var)[1] == "NON")
+            {
+               if (levels(var)[2] == "oui")
+                  var <- relevel(var, "oui")
+               if (levels(var)[2] == "OUI")
+                  var <- relevel(var, "OUI")
+            }
+            if (levels(var)[1] == "no" & levels(var)[2] == "yes")
+            {
+               var <- relevel(var, "yes")
+            }
+
             ligne <- paste0(ligne1, " (", levels(var)[1], ") - no. (%)")
 
             for (j in 1:levels_y) {

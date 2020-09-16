@@ -304,38 +304,37 @@ reglog <- function(DF,
       as.data.frame(stability_rslts[order(as.numeric(stability_rslts[,2])),]) -> stability_rslts
       colnames(stability_rslts) <- c("variables","% inclusion AIC","% inclusion BIC","% inclusion deviance")
       stability_rslts
-   }
-   ##################################################
+
+      ##################################################
 
 
-   ##################################################
-   #                       MEANS                    #
-   ##################################################
-   # 1. selection of meaningful variables
-   stability_rslts$`% inclusion` <- as.numeric(as.character(stability_rslts$`% inclusion`))
-   stability_rslts$variables <- as.character(stability_rslts$variables)
+      ##################################################
+      #                       MEANS                    #
+      ##################################################
+      # 1. selection of meaningful variables
+      stability_rslts$`% inclusion` <- as.numeric(as.character(stability_rslts$`% inclusion`))
+      stability_rslts$variables <- as.character(stability_rslts$variables)
 
-   meaningful_variables  <-  stability_rslts$variables[stability_rslts$`% inclusion` > 30]
-   variables_means_intermediate <- matrix(nrow = (length(meaningful_variables)+1),ncol = (1+nbre))
-   variables_means_rslt <- matrix(nrow = (length(meaningful_variables)+1),ncol = 2)
-   variables_means_rslt[1,] <- c("variables","mean coefficient")
-   variables_means_rslt[,1] <- c("variables",meaningful_variables)
-   for (n in 1:nbre)
-   {
-      sample(nrow(DF), nrow(DF), replace = TRUE) -> colDF
-      newDF <- DF[colDF, ]
-      mod <- glm(newDF[,c(y,meaningful_variables)], family = "binomial")
+      meaningful_variables  <-  stability_rslts$variables[stability_rslts$`% inclusion` > 30]
+      variables_means_intermediate <- matrix(nrow = (length(meaningful_variables)+1),ncol = (1+nbre))
+      variables_means_rslt <- matrix(nrow = (length(meaningful_variables)+1),ncol = 2)
+      variables_means_rslt[1,] <- c("variables","mean coefficient")
+      variables_means_rslt[,1] <- c("variables",meaningful_variables)
+      for (n in 1:nbre)
+      {
+         sample(nrow(DF), nrow(DF), replace = TRUE) -> colDF
+         newDF <- DF[colDF, ]
+         mod <- glm(newDF[,c(y,meaningful_variables)], family = "binomial")
+         for (k in 1:length(meaningful_variables))
+         {
+            summary(mod)$coefficients[(k + 1), 1] -> variables_means_intermediate[k+1,n+1]
+         }
+      }
       for (k in 1:length(meaningful_variables))
       {
-         summary(mod)$coefficients[(k+1), 1] -> variables_means_intermediate[k+1,n+1]
+         variables_means_rslt[1+k,2] <- round(mean(variables_means_intermediate[1+k,2:nbre]),3)
       }
    }
-   for (k in 1:length(meaningful_variables))
-   {
-      variables_means_rslt[1+k,2] <- round(mean(variables_means_intermediate[1+k,2:nbre]),3)
-   }
-   variables_means_rslt
-
    ##################################################
 
 
