@@ -100,7 +100,7 @@ reglog <- function(DF,
    {
       DF <- as.data.frame(DF,row.names = NULL)
       DF <- DF[,c(y,explicatives)]
-      if (make.names(colnames(DF)) != colnames(DF))
+      if (!setequal(make.names(colnames(DF)),colnames(DF)))
       {
          message("column names are not valid, 'make.names()' is used to have valid colnames")
          make.names(colnames(DF)) -> colnames(DF)
