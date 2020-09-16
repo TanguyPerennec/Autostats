@@ -26,7 +26,7 @@ multivariate_selection <-
             check_interactions = FALSE,
             alpha = 0.05,
             verbose=TRUE,
-            delta=7)
+            delta=4)
    {
 
       #To ignore warnings during usage
@@ -208,8 +208,6 @@ multivariate_selection <-
             model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
             for (i in seq(vars_remainings))
             {
-               print(last_model)
-               print(vars_remainings[i])
                pval <- models_test(model = last_model, y, var_diff = vars_remainings[i])
                model_test_df[i, ] <- c(vars_remainings[i],pval)
             }

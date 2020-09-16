@@ -11,19 +11,22 @@
 #' @import stringr
 #'
 #' @examples
-propensity <- function(DF,y,regression=FALSE){
+propensity <- function(DF,
+                       y,
+                       regression=FALSE)
+{
 
-   source("R/reglog.R")
-   if(is.logical(regression)){
+   if (is.logical(regression))
+   {
       reglog(DF,y,verbose = FALSE) -> regression
-   }else{
-      if(!is.matrix(regression))
+   } else {
+      if (!is.matrix(regression))
          stop("regression must be a matrix with OR values")
    }
 
    cols <- vector()
    level <- vector()
-   i=0
+   i = 0
    for (col in regression[-1,1][regression[-1,5]!= "-"]){
       i + 1 -> i
       cols[i] <- str_split(col," ")[[1]][1]

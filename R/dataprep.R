@@ -237,7 +237,7 @@ NA_rm_for_glm <- function(DF,
 
       if (verbose)
       {
-         cat("We delete all rows which are not complete :")
+         cat("\n\n We delete all rows which are not complete :\n")
       }
 
       #Calculating EPV
@@ -559,7 +559,7 @@ data_prep_complete <- function(DF,
       cat("\n",(nrow(DF1) - nrow(DF))," rows deleted (",round(100*(nrow(DF1) - nrow(DF))/(nrow(DF1)),0),"%)","...........",nrow(DF),"rows remaining")
       cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
           "It remains ",length(explicatives),"variables and ",nrow(DF),"observations
-   \n\n+-----------------------------------------------------------------------------------------------------------------+\n")
+   \n\n+--------------------------------------------------------------------------+\n")
    }
 
    return(DF)

@@ -146,11 +146,12 @@ reglog <- function(DF,
       if (verbose) cat("
 \n
 \n
------+-----------------------------+-----------------------------------------------------------
+-----+-----------------------------+--------------------------------------
      |                             |
      |      1) DATA CLEANING       |
      |                             |
-     +-----------------------------+\n")
+     +-----------------------------+
+                       \n")
 
       DF <- data_prep_complete(DF,y,verbose = TRUE,keep = keep2,...)
 
@@ -186,7 +187,7 @@ reglog <- function(DF,
    if (verbose) cat(
       "\n
 \n
------+-----------------------------+-----------------------------------------------------------
+-----+-----------------------------+--------------------------------------
      |                             |
      |    2) UNIVARIATE MODEL      |
      |                             |
@@ -249,7 +250,7 @@ reglog <- function(DF,
    if (verbose) cat("
 \n
 \n
------+-----------------------------+-----------------------------------------------------------
+-----+-----------------------------+--------------------------------------
      |                             |
      |    3) MULTIVARIATE MODEL    |
      |                             |
@@ -264,78 +265,62 @@ reglog <- function(DF,
    ##################################################
 
 
-   ##################################################
-   #                   STABILITY                    #
-   ##################################################
+
+   if (verbose) cat("
+\n
+\n
+-----+-----------------------------+--------------------------------------
+     |                             |
+     |    4) STABILITY ANALYSIS    |
+     |                             |
+     +-----------------------------+\n")
+
+
 
    if (stability)
    {
-      stability_rslts <- matrix(ncol = 4,nrow = length(colnames(DF)[colnames(DF) != y]))
-      stability_rslts[,1] <- colnames(DF)[colnames(DF) != y]
-      stability_rslts[,2:ncol(stability_rslts)] <- rep(0,nrow(stability_rslts))
-      nbre = 10
-      l = 1
-      for (critere in c("AIC","BIC","deviance"))
-      {
-         l=l+1
-         for (i in 1:nbre)
-         {
-            sample(nrow(DF), nrow(DF), replace = TRUE) -> colDF
-            newDF <- DF[colDF, ]
-            s_dev_back <- multivariate_selection(newDF,
-                                                 y,
-                                                 criteria = critere,
-                                                 method = "backward",
-                                                 verbose = FALSE)
-            progressbar(i,total = nbre,variable = s_dev_back$vars_multi,text = "selected variables : ")
-            for (var in colnames(DF)[colnames(DF) != y])
-            {
-               if (var %in% s_dev_back$vars_multi)
-               {
-                  stability_rslts[match(var,stability_rslts[,1]),l] <- as.numeric(stability_rslts[match(var,stability_rslts[,1]),l]) + 1
-               }
-            }
-         }
-      }
-      for (n in 2:ncol(stability_rslts))
-      {
-         round((as.numeric(stability_rslts[,n])/nbre)*100,1) -> stability_rslts[,n]
-      }
-      as.data.frame(stability_rslts[order(as.numeric(stability_rslts[,2])),]) -> stability_rslts
-      colnames(stability_rslts) <- c("variables","% inclusion AIC","% inclusion BIC","% inclusion deviance")
-      stability_rslts
 
-      ##################################################
+      stability_rslts <- stability_proportion(DF,y)
+
+      meaningful_variables <- stability_select_meaningful(stability_rslts)
 
 
-      ##################################################
-      #                       MEANS                    #
-      ##################################################
-      # 1. selection of meaningful variables
-      stability_rslts$`% inclusion` <- as.numeric(as.character(stability_rslts$`% inclusion`))
-      stability_rslts$variables <- as.character(stability_rslts$variables)
+      variables_means_rslt <- variables_means(DF[,c(y,meaningful_variables)])
 
-      meaningful_variables  <-  stability_rslts$variables[stability_rslts$`% inclusion` > 30]
-      variables_means_intermediate <- matrix(nrow = (length(meaningful_variables)+1),ncol = (1+nbre))
-      variables_means_rslt <- matrix(nrow = (length(meaningful_variables)+1),ncol = 2)
-      variables_means_rslt[1,] <- c("variables","mean coefficient")
-      variables_means_rslt[,1] <- c("variables",meaningful_variables)
-      for (n in 1:nbre)
+      if (verbose)
       {
-         sample(nrow(DF), nrow(DF), replace = TRUE) -> colDF
-         newDF <- DF[colDF, ]
-         mod <- glm(newDF[,c(y,meaningful_variables)], family = "binomial")
-         for (k in 1:length(meaningful_variables))
-         {
-            summary(mod)$coefficients[(k + 1), 1] -> variables_means_intermediate[k+1,n+1]
-         }
-      }
-      for (k in 1:length(meaningful_variables))
-      {
-         variables_means_rslt[1+k,2] <- round(mean(variables_means_intermediate[1+k,2:nbre]),3)
+         cat("
+\n
+\n Percentage of inclusion in models are : \n")
+         print(stability_rslts)
+         cat("
+\n
+\n So meaningful variables are : \n")
+         cat(meaningful_variables,sep = " ; ")
+         cat('
+\n
+\n Coefficents means are :
+             ')
+         print(variables_means_rslt)
       }
    }
    ##################################################
+
+
+
+
+
+   if (verbose) cat("
+\n
+\n
+-----+-----------------------------+--------------------------------------
+     |                             |
+     |    5) AUC                   |
+     |                             |
+     +-----------------------------+\n")
+
+
+
 
 
    ##################################################
