@@ -43,7 +43,8 @@ reglog <- function(DF,
             rowstimevariable = 10,
             confirmation=FALSE,
             keep=FALSE,
-            exit = "excel",
+            exit = "html",
+            stability="TRUE",
             ...)
    {
 
@@ -162,9 +163,9 @@ reglog <- function(DF,
    #####
    vect_explicative <- vector()
    as.data.frame(DF) -> DF
+   explicatives <- colnames(DF)[colnames(DF) !=y]
    n = 1
    for (var in explicatives) {#making a vector with the name of the variable displayed as many times as (levels - 1)
-      print(var)
       if (is.numeric(DF[, var])) {
          vect_explicative[n] <- var
          n <- n + 1
@@ -223,8 +224,7 @@ reglog <- function(DF,
          vector_var[i] <- var_uni
          rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
          row.names(rslt)[i + 1] <- paste0(var_uni,ligneR[5])
-      } else
-      {
+      } else {
          while (k + 1 < length(levels(DF[, var_uni])))
          {
             i <- i + 1
@@ -265,6 +265,81 @@ reglog <- function(DF,
 
 
    ##################################################
+   #                   STABILITY                    #
+   ##################################################
+
+   if (stability)
+   {
+      stability_rslts <- matrix(ncol = 4,nrow = length(colnames(DF)[colnames(DF) != y]))
+      stability_rslts[,1] <- colnames(DF)[colnames(DF) != y]
+      stability_rslts[,2:ncol(stability_rslts)] <- rep(0,nrow(stability_rslts))
+      nbre = 10
+      l = 1
+      for (critere in c("AIC","BIC","deviance"))
+      {
+         l=l+1
+         for (i in 1:nbre)
+         {
+            sample(nrow(DF), nrow(DF), replace = TRUE) -> colDF
+            newDF <- DF[colDF, ]
+            s_dev_back <- multivariate_selection(newDF,
+                                                 y,
+                                                 criteria = critere,
+                                                 method = "backward",
+                                                 verbose = FALSE)
+            progressbar(i,total = nbre,variable = s_dev_back$vars_multi,text = "selected variables : ")
+            for (var in colnames(DF)[colnames(DF) != y])
+            {
+               if (var %in% s_dev_back$vars_multi)
+               {
+                  stability_rslts[match(var,stability_rslts[,1]),l] <- as.numeric(stability_rslts[match(var,stability_rslts[,1]),l]) + 1
+               }
+            }
+         }
+      }
+      for (n in 2:ncol(stability_rslts))
+      {
+         round((as.numeric(stability_rslts[,n])/nbre)*100,1) -> stability_rslts[,n]
+      }
+      as.data.frame(stability_rslts[order(as.numeric(stability_rslts[,2])),]) -> stability_rslts
+      colnames(stability_rslts) <- c("variables","% inclusion AIC","% inclusion BIC","% inclusion deviance")
+      stability_rslts
+   }
+   ##################################################
+
+
+   ##################################################
+   #                       MEANS                    #
+   ##################################################
+   # 1. selection of meaningful variables
+   stability_rslts$`% inclusion` <- as.numeric(as.character(stability_rslts$`% inclusion`))
+   stability_rslts$variables <- as.character(stability_rslts$variables)
+
+   meaningful_variables  <-  stability_rslts$variables[stability_rslts$`% inclusion` > 30]
+   variables_means_intermediate <- matrix(nrow = (length(meaningful_variables)+1),ncol = (1+nbre))
+   variables_means_rslt <- matrix(nrow = (length(meaningful_variables)+1),ncol = 2)
+   variables_means_rslt[1,] <- c("variables","mean coefficient")
+   variables_means_rslt[,1] <- c("variables",meaningful_variables)
+   for (n in 1:nbre)
+   {
+      sample(nrow(DF), nrow(DF), replace = TRUE) -> colDF
+      newDF <- DF[colDF, ]
+      mod <- glm(newDF[,c(y,meaningful_variables)], family = "binomial")
+      for (k in 1:length(meaningful_variables))
+      {
+         summary(mod)$coefficients[(k+1), 1] -> variables_means_intermediate[k+1,n+1]
+      }
+   }
+   for (k in 1:length(meaningful_variables))
+   {
+      variables_means_rslt[1+k,2] <- round(mean(variables_means_intermediate[1+k,2:nbre]),3)
+   }
+   variables_means_rslt
+
+   ##################################################
+
+
+   ##################################################
    #              MATRICE DE RÉSULTATS              #
    ##################################################
    OR <- exp(mod_multi$coefficients) #exp de la fonction logit
@@ -281,7 +356,8 @@ reglog <- function(DF,
       rslt[n_ligne, 5:7] <- c(signif(OR[i + 1], round), IC_paste, p)
    }
 
-   for (n in 1:length(rslt[-1, 4])) {
+   for (n in 1:length(rslt[-1, 4]))
+   {
       p = as.numeric(rslt[n + 1, 4])
       round(p, round) -> p
       ifelse(p == 0, "<0.001", p) -> rslt[n + 1, 4]
@@ -310,9 +386,10 @@ reglog <- function(DF,
          rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "OR",IC_univariate = "IC95%",pval_univariate = "p-value",OR_multivariate = "OR",IC_multivariate = "IC95%",pval_multivariate = "p-value", top = FALSE)
          rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "univariate modele",IC_univariate = "univariate modele",pval_univariate = "univariate modele",OR_multivariate = "multivariate modele",IC_multivariate = "multivariate modele",pval_multivariate = "multivariate modele", top = TRUE)
 
-         rslt <- merge_at(rslt, part = "header",i=1:1,j=2:4)
-         rslt <- merge_at(rslt, part = "header",i = 1:1,j=5:7)
+         rslt <- merge_at(rslt, part = "header",i = 1:1,j = 2:4)
+         rslt <- merge_at(rslt, part = "header",i = 1:1,j = 5:7)
          rslt <- theme_booktabs(rslt)
+         rslt <- autofit(rslt)
 
       }
 

@@ -13,8 +13,8 @@ table1(
   norm_test = TRUE,
   Khi2 = TRUE,
   mutation = 40,
-  legend = FALSE,
-  title = FALSE,
+  legend = TRUE,
+  title = TRUE,
   exit = "excel"
 )
 }
@@ -27,14 +27,22 @@ table1(
 
 \item{overall}{booleen (optionnal) : TRUE if an "overall" column is wanted}
 
+\item{tests}{booleen (optionnal) : TRUE if you want tests to be executed}
+
+\item{norm_test}{booleen (optionnal) : TRUE if you want tests on normal distribution to be performed has condition to student test}
+
+\item{Khi2}{booleen (optionnal) : if TRUE, khi2 is prefered to fisher}
+
 \item{mutation}{numeric : number of categories to display for one variable. If more than "mutation" categories, the categories after this threeshold are wrapped into a "others" categorie.}
 
 \item{legend}{booleen (optionnal) : TRUE if a legend is wanted under the table}
 
 \item{title}{booleen (optionnal) : TRUE if a title is wanted}
+
+\item{exit}{character : among 'html', 'console' or 'excel'}
 }
 \value{
-results are in a dataframe
+dataframe, excel file or html table
 }
 \description{
 Table 1

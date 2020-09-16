@@ -7,12 +7,15 @@
 #' @param mutation numeric : number of categories to display for one variable. If more than "mutation" categories, the categories after this threeshold are wrapped into a "others" categorie.
 #' @param legend booleen (optionnal) : TRUE if a legend is wanted under the table
 #' @param title booleen (optionnal) : TRUE if a title is wanted
+#' @param tests booleen (optionnal) : TRUE if you want tests to be executed
+#' @param norm_test booleen (optionnal) : TRUE if you want tests on normal distribution to be performed has condition to student test
+#' @param Khi2 booleen (optionnal) : if TRUE, khi2 is prefered to fisher
+#' @param exit character : among 'html', 'console' or 'excel'
 #'
-#' @return results are in a dataframe
+#' @return dataframe, excel file or html table
 #' @export
 #' @import stringr
 #' @import stats
-#' @import table1
 #' @import flextable
 table1 <- function(DF,
             y,
@@ -22,8 +25,8 @@ table1 <- function(DF,
             norm_test = TRUE,
             Khi2 = TRUE,
             mutation = 40,
-            legend = FALSE,
-            title = FALSE,
+            legend = TRUE,
+            title = TRUE,
             exit = 'excel')
 {
 
@@ -83,13 +86,20 @@ table1 <- function(DF,
    #                First two lines                 #
    ##################################################
    tabf <- matrix(nrow = 1, ncol = levels_y + 2)
-   tabf <- c("characteristics", ynames, "p-value")
-   ligne2 <- rep("", levels_y + 2)
+   if (tests)
+   {
+      tabf <- c("characteristics", ynames, "p-value")
+      ligne2 <- rep("", levels_y + 2)
+   } else {
+      tabf <- c("characteristics", ynames)
+      ligne2 <- rep("", levels_y + 1)
+   }
+
    for (k in 1:levels_y)
    {
       ligne2[k + 1] <- paste0("N = ", table(DF[, y])[k]) #number of observations for each levels of y
    }
-   numbers_observation <- ligne2[1:levels_y+1]
+   numbers_observation <- ligne2[1:levels_y + 1]
    tabf <- rbind(tabf, ligne2)
    ##################################################
 
@@ -97,76 +107,107 @@ table1 <- function(DF,
    y_index <- match(y, colnames(DF))
    DF_without_y <- DF[, -y_index]
    i <- 0
+   num_variables <- vector()
+
+   for (column in colnames(DF))
+   {#pour mise en page flextable
+      i + 1 -> i
+      is.numeric(DF[,column]) -> num
+      if (num)
+         num_variables <- c(num_variables,i)
+   }
+
+
+   i <- 0
 
    ### loop for each characteristics (var) ###
-
-   for (var in DF_without_y) {
+   for (var in DF_without_y)
+   {
       i <- i + 1
       varname <- colnames(DF)[i]
       progressbar(total = length(DF),i,variable = varname)
-      ligne <- varname
+      ligne1 <- varname
+      ligne2 <- "\t \t Mean (SD)"
+      ligne3 <- "\t \t Median [min - max]"
       sign <- NULL
 
       if (is.numeric(var))
       {
          mean_vars <- aggregate(var ~ DF[, y], FUN = "mean")
+         median_vars <- aggregate(var ~ DF[, y], FUN = "median")
          sd_vars <- aggregate(var ~ DF[, y], FUN = "sd")
+         min_vars <- aggregate(var ~ DF[, y], FUN = "min")
+         max_vars <- aggregate(var ~ DF[, y], FUN = "max")
          length_vars <- aggregate(var ~ DF[, y], FUN = "length")
          for (j in 1:levels_y)
          {
             # for each modality
             mean_vars_level <- round(mean_vars[j, 2], 2)
             sd_vars_level <- round(sd_vars[j, 2], 2)
-            ligne <- c(ligne, paste0(mean_vars_level, "±", sd_vars_level))
+            median_vars_level <- round(median_vars[j, 2], 2)
+            min_vars_level <- round(min_vars[j, 2], 2)
+            max_vars_level <- round(max_vars[j, 2], 2)
+            ligne1 <- c(ligne1," ")
+            ligne2 <- c(ligne2,paste0(mean_vars_level, " (", sd_vars_level,") "))
+            ligne3 <- c(ligne3,paste0(median_vars_level," [",min_vars_level," - ",max_vars_level,"] "))
          }
-         # 1. Verification des conditions d'application
-         verif <- TRUE
-         ncst <- TRUE
-         p <- "-"
-         if (nrow(mean_vars) == levels_y)
+         if (tests)
          {
-            for (var_mod in 1:levels_y)
-            {
-               if (length_vars[var_mod,2] < 8)
-               {
-                  ncst <- FALSE
-               }
-            }
-            if (ncst & !(NA %in% sd_vars[,2]))
+            # 1. Verification des conditions d'application
+            verif <- TRUE
+            ncst <- TRUE
+            p <- "-"
+            if (nrow(mean_vars) == levels_y)
             {
                for (var_mod in 1:levels_y)
                {
-                  if (length_vars[var_mod,2] < 31 & length_vars[var_mod,2] > 7 & sd_vars[var_mod,2] != 0)
+                  if (length_vars[var_mod,2] < 8)
                   {
-                     p_shapiro <- shapiro.test(var[DF[,y] == levels(DF[, y])[var_mod]])$p.value
-                     if (p_shapiro < 0.05)
-                        verif <- FALSE
+                     ncst <- FALSE
                   }
                }
-               variance_equal <- ifelse(var.test(var ~ DF[, y])$p.value > 0.05,TRUE,FALSE)
-            }
-            if (ncst & sd(var, na.rm=TRUE) != 0)
-            {
-               # Conditions d'application = loi normale ou n > 30 respectées si verif == TRUE
-               if (verif)
+               if (ncst & !(NA %in% sd_vars[,2]))
                {
-                  if (variance_equal)
+                  for (var_mod in 1:levels_y)
                   {
-                     p <- signif(t.test(var ~ DF[, y],var.equal = TRUE)$p.value, 3)
-                  } else{
-                     p <- signif(t.test(var ~ DF[, y],var.equal = FALSE)$p.value, 3)
-                     p <- paste0(p," (a)")
+                     if (length_vars[var_mod,2] < 31 & length_vars[var_mod,2] > 7 & sd_vars[var_mod,2] != 0)
+                     {
+                        p_shapiro <- shapiro.test(var[DF[,y] == levels(DF[, y])[var_mod]])$p.value
+                        if (p_shapiro < 0.05)
+                           verif <- FALSE
+                     }
+                  }
+                  variance_equal <- ifelse(var.test(var ~ DF[, y])$p.value > 0.05,TRUE,FALSE)
+               }
+               if (ncst & sd(var, na.rm = TRUE) != 0)
+               {
+                  # Conditions d'application = loi normale ou n > 30 respectées si verif == TRUE
+                  if (verif)
+                  {
+                     if (variance_equal)
+                     {
+                        p <- signif(t.test(var ~ DF[, y],var.equal = TRUE)$p.value, 3)
+                     } else{
+                        p <- signif(t.test(var ~ DF[, y],var.equal = FALSE)$p.value, 3)
+                        p <- paste0(p," (a)")
+                     }
+                  } else {
+                     p <- signif(wilcox.test(var ~ DF[, y])$p.value,3)
+                     p <- paste0(p," (c)")
                   }
                } else {
-                  p <- signif(wilcox.test(var ~ DF[, y])$p.value,3)
-                  p <- paste0(p," (c)")
+                  p <- "-"
                }
-            } else {
-               p <- "-"
             }
+            ligne1 <- c(ligne1, p)
+         }else {
+            ligne1 <- c(ligne1, " ")
          }
-         ligne <- c(ligne, p)
-         tabf <- rbind(tabf, ligne)
+         ligne2 <- c(ligne2, " ")
+         ligne3 <- c(ligne3, " ")
+         tabf <- rbind(tabf,ligne1)
+         tabf <- rbind(tabf,ligne2)
+         tabf <- rbind(tabf,ligne3)
       }
 
 
@@ -243,7 +284,7 @@ table1 <- function(DF,
              #  }else{
             #         relevel(var, "oui")}
            # }
-            ligne <- paste0(ligne, " (", levels(var)[1], ") - no. (%)")
+            ligne <- paste0(ligne1, " (", levels(var)[1], ") - no. (%)")
 
             for (j in 1:levels_y) {
                no <- tb[j, 1]
@@ -281,12 +322,6 @@ table1 <- function(DF,
    rslt <- rslt[-1, ]
    ###
 
-   if (title) {
-      title_text <- "Table 1. Patients baseline characteristics by study group"
-   } else{
-      title_text <- NULL
-   }
-
    if ("html" %in% exit)
    {
       rslt <- as.data.frame(rslt[-1,])
@@ -295,9 +330,9 @@ table1 <- function(DF,
       {
          colsy[n] <- paste(ynames[n],numbers_observation[n],sep="\n")
       }
-      colnames(rslt) <- c("characteristics",colsy,"p_value")
+      colnames(rslt) <- c("characteristics",colsy,"p value")
 
-      rslt <- flextable(rslt, col_keys = c("characteristics",colsy,"p_value"))
+      rslt <- flextable(rslt, col_keys = c("characteristics",colsy,"p value"))
 
       rslt <- add_footer(rslt, characteristics = "p-values have been obtained form a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
                          - a : Student test with Welch approximation
@@ -306,10 +341,31 @@ table1 <- function(DF,
       rslt <- merge_at(rslt, j = 1:(levels_y+2), part = "footer")
       rslt <- valign(rslt, valign = "bottom", part = "footer")
       rslt <- add_header_lines(rslt,"Table 1. Patients baseline characteristics by study group")
-      rslt %>% fontsize(i = 1, part = "header", size = 20) %>%
+      rslt %>% fontsize(i = 1, part = "header", size = 24) %>%
          bold(i = 1, part = "header", bold = TRUE) -> rslt
+      rslt %>% fontsize(i = 2, part = "header", size = 20) %>%
+         bold(i = 2, part = "header", bold = TRUE) -> rslt
+
+
+      #### Mise en gras des variables (- a faire)
+      #ligne=1
+      #var = 1
+      #while (var < length(DF))
+      #{
+      #   rslt %>% bold(i = ligne,j=1, part = "body", bold = TRUE) -> rslt
+      #   if (ligne %in% num_variables)
+      #   {
+      #      ligne <- ligne + 3
+      #   } else {
+      #      ligne <- ligne + 1
+      #   }
+      #   var <- var+1
+      #}
+
       rslt <- theme_booktabs(rslt)
       rslt <- autofit(rslt)
+      rslt %>% align(j=2:4,align='center') -> rslt
+      rslt %>% align(j=2:4,align='center',part = "header") -> rslt
    }
 
    return(rslt)

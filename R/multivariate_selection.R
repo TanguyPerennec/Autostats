@@ -44,7 +44,8 @@ multivariate_selection <-
       if (missing(keep))
       {
          keep = FALSE
-         message("no keep variables have been provided")
+         if (verbose)
+            message("no keep variables have been provided")
       }
 
       if (!(criteria  %in% c("deviance", "AIC", "BIC")))
@@ -104,7 +105,7 @@ multivariate_selection <-
       ##############################
       if (grepl("backward",method))
       {
-         #Determination of the principal factor : specified or determined by the variable for which the deviance is the smallest
+         #Determination of the principal factor (specified or the variable for which the deviance is the smallest)
          if (!is.logical(principal_factor))
          {
             if (!(principal_factor %in% explicatives))
@@ -166,7 +167,6 @@ multivariate_selection <-
 
 
 
-
          # Backward selection for interaction
          if (check_interactions)
          {
@@ -202,14 +202,16 @@ multivariate_selection <-
          last_model <- stats::glm(formule_lastmodel,data = DF, family = "binomial")
          vars_out <- NULL
 
-         while (length(vars_remainings) > 0 & nstep < length(explicatives)*3)
+         while (length(vars_remainings) > 1 & nstep < length(explicatives)*3)
          {
             nstep <- nstep + 1
             model_test_df <- matrix(nrow = length(vars_remainings), ncol = 2)
             for (i in seq(vars_remainings))
             {
+               print(last_model)
+               print(vars_remainings[i])
                pval <- models_test(model = last_model, y, var_diff = vars_remainings[i])
-               model_test_df[i,] <- c(vars_remainings[i],pval)
+               model_test_df[i, ] <- c(vars_remainings[i],pval)
             }
             model_test_df <- as.data.frame(model_test_df)
             col2 <- ifelse(criteria == "deviance","pval",paste0("delta ",criteria))

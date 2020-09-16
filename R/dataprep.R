@@ -1,3 +1,60 @@
+
+
+#' Detect outliers
+#'
+#' @param var : the variable to test
+#' @param k : factor to apply to median absolute deviation to obtain the interval
+#' @param inplace (boolean) : whether the variable should be returned without the outliers or not
+#'
+#' @return
+#' @export
+#'
+#' @examples
+detect_outliers <- function(var,
+                            k=3,
+                            inplace=TRUE)
+{
+   if (!is.numeric(var))
+      stop("variable has to be numeric !")
+
+   binf <- median(var,na.rm = TRUE) - k * mad(var,na.rm = TRUE) # calcule la borne inf de l'intervalle
+   bsup <- median(var,na.rm = TRUE) + k * mad(var,na.rm = TRUE) # calcule la borne sup de l'intervalle
+
+   outliers <- list()
+
+   for (n in seq(length(var)))
+   {
+      if (!is.na(var[n]))
+      {
+         values = var[n]
+         if (values < binf | values > bsup)
+         {
+            outliers$values <- c(outliers$values,values)
+            outliers$places <- c(outliers$places,n)
+            if (inplace)
+            {
+               var[var == values] <- NA
+            }
+         }
+      }
+   }
+
+   if (inplace)
+   {
+      response <- var
+   } else {
+      response <- outliers
+   }
+
+
+   return(response)
+
+}
+
+
+
+
+
 #' Coerce a column into a binary column
 #'
 #' @param col column to change into a binary column
