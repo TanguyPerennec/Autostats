@@ -109,10 +109,10 @@ table1 <- function(DF,
    i <- 0
    num_variables <- vector()
 
-   for (column in colnames(DF))
+   for (column in colnames(DF_without_y))
    {#pour mise en page flextable
       i + 1 -> i
-      is.numeric(DF[,column]) -> num
+      is.numeric(DF_without_y[,column]) -> num
       if (num)
          num_variables <- c(num_variables,i)
    }
@@ -124,8 +124,8 @@ table1 <- function(DF,
    for (var in DF_without_y)
    {
       i <- i + 1
-      varname <- colnames(DF)[i]
-      progressbar(total = length(DF),i,variable = varname)
+      varname <- colnames(DF_without_y)[i]
+      progressbar(total = length(DF_without_y),i,variable = varname)
       ligne1 <- varname
       ligne2 <- "\t \t Mean (SD)"
       ligne3 <- "\t \t Median [min - max]"

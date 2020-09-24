@@ -234,18 +234,23 @@ multivariate_selection <-
             {
                "no variable remainings but the variables to keep"
             }else {
-               criteria_trigger <- ifelse(criteria == "deviance",alpha,7)
-               if (model_test_df[k, 2] > criteria_trigger)
+               criteria_trigger <- ifelse(criteria == "deviance",alpha,delta)
+               print(model_test_df[k, 2] )
+               print(criteria_trigger)
+               if (!is.na(model_test_df[k, 2]))
                {
-                  if (verbose)
-                     cat("\nThe best model exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
-                  vars_remainings <- vars_remainings[vars_remainings != model_test_df[k,1]]
-                  vars_out <- c(vars_out,model_test_df[k,1])
-               }else
-               {
-                  if (verbose)
-                     cat("\nThe best model do not exlude any variable of the remainings (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta",criteria," threeshold = 10")),"):",vars_remainings)
-                  break
+                  if (model_test_df[k, 2] > criteria_trigger)
+                  {
+                     if (verbose)
+                        cat("\nThe best model exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+                     vars_remainings <- vars_remainings[vars_remainings != model_test_df[k,1]]
+                     vars_out <- c(vars_out,model_test_df[k,1])
+                  }else
+                  {
+                     if (verbose)
+                        cat("\nThe best model do not exlude any variable of the remainings (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta",criteria," threeshold = 10")),"):",vars_remainings)
+                     break
+                  }
                }
             }
             last_model <- stats::glm(formula = formulation(object = vars_remainings,y),family = "binomial",data = DF)
@@ -295,8 +300,6 @@ multivariate_selection <-
             last_model <- stats::glm(formula = formulation(object = vars_remainings,y),family = "binomial",data = DF)
 
             }
-
-
          }
 
 

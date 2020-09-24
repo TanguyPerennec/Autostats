@@ -4,7 +4,7 @@
 \alias{propensity}
 \title{Propensity score}
 \usage{
-propensity(DF, y, regression = FALSE)
+propensity(DF, y, regression)
 }
 \arguments{
 \item{DF}{dataframe}
