@@ -1,15 +1,16 @@
 #' Variable selection for a multivariate logistic regression model
 #'
 #' @param DF dataframe
-#' @param y character : variable to be explain by 'explicatives'
+#' @param y character : variable to explain by 'explicatives'
 #' @param explicatives vector of character : variables to be selected in the multivariate model
-#' @param principal_factor (optional) : principal criteria to explain y. First variable to be selected and won't be removed from selection.
-#' @param method character : can be backward
-#' @param criteria character
-#' @param check_interactions logical
-#' @param alpha num
-#' @param verbose logical
-#' @param keep character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.
+#' @param principal_factor (optional) : principal criteria to explain y. It will be th first variable to be selected and won't be removed from selection.
+#' @param method character : can be backward, forward. You can pass other arguments such as augmented or stepwise as follow "backward stepwise augmented".
+#' @param criteria character : the criteria that will be used to select models. Can be deviance, AIC and BIC.
+#' @param check_interactions logical : wether interaction between the principal_factor and the other variables should be checked.
+#' @param alpha num : the threesold that should be used to consider a test as significant
+#' @param verbose logical : whether the details of the calculs should be displayed on the console
+#' @param keep character or vector (optional) : variables that will be kept in the model no matter of its statistical importance Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.
+#' @param delta num : threeshold of difference in BIC or AIC to consider a model as more informative
 #'
 #' @return
 #' @export
