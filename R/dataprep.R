@@ -1,4 +1,66 @@
 
+#' Colnames preparation
+#'
+#' @param object : vector of character or dataframe
+#' @param type (character) : use 'makes.names' to create new names in correct format for R function or 'presentation' to put it in correct way to definitive presentation
+#'
+#' @return
+#' @export
+#'
+#' @examples
+colnames_prep <-  function(object,type="make.names")
+{
+
+   # Verification
+   if (is.data.frame(object)) {
+      names <- colnames(object)
+   } else if (is.vector(object)) {
+      names <- object
+   } else {
+      stop("'object' is not a dataframe nor a vector")
+   }
+
+   if ("make.names" %in% type) {
+      make.names <- TRUE
+   } else if (type == "presentation") {
+      presentation <- TRUE
+   } else {
+      stop("please make sure you provided a correct 'type' ")
+   }
+
+   if (make.names) {
+
+      # No special characters
+      for (i in seq(names)) {
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00e9\\u00e8\\u00ea\\u00eb]","e")
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00e0\\u00e2]","a")
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00ef]","i")
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00f9\\u00fa\\u00fc]","u")
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00f4\\u00f6]","o")
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00f1]","n")
+         names[i] <- stringr::str_replace_all(names[i],"[\\u00e6]","ae")
+      }
+
+      # no spaces
+      for (i in seq(names)) {
+         names[i] <- stringr::str_replace_all(names[i],"[\ ]","_")
+         names[i] <- stringr::str_replace_all(names[i],"[...]","_")
+         names[i] <- stringr::str_replace_all(names[i],"[.]","_")
+         names[i] <- stringr::str_replace_all(names[i],"[\']","_")
+      }
+
+   } else if (presentation) {
+      for (i in seq(names)) {
+         names[i] <- stringr::str_replace_all(names[i],"[_]"," ")
+         names[i] <- stringr::str_to_sentence(names[i])
+      }
+   }
+
+   return(names)
+
+}
+
+
 
 #' Detect outliers
 #'
@@ -388,7 +450,7 @@ format_data <- function(DF,
                         type=c("plain","no-plural"))
 {
    as.data.frame(DF) -> DF
-      colnames(DF) -> colnamesDF
+   colnames(DF) -> colnamesDF
 
       for (i in 1:length(DF))
       {

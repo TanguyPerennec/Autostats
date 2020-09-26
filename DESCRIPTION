@@ -10,6 +10,10 @@ Authors@R:
            family = "Wargny",
            role = c("aut")
            ),
+           person(given = "Thomas",
+   family = "Goronflot",
+   role = c("aut")
+   ),
    person(given = "Pierre-Antoine",
    family = "Gourraud",
    role = c("aut")
@@ -37,7 +41,6 @@ Imports:
     ROCR,
     logistf,
     here,
-    inca3,
     safeBinaryRegression,
     missForest,
     VIM,
