@@ -3,8 +3,6 @@
 #' @description reglog is able to perform logistic regression with variable selection and gives as a result a matrix with variable names, odds-ratios,
 #'  confidence intervals and p-values of univariate and multivariate models.
 #'
-#' @usage reglog(DF,y,explicatives,...)
-#'
 #' @param DF dataframe, matrix or tibble that contains all explicatives variables and the variable to explain
 #' @param y character : name of the variable to explain
 #' @param explicatives character vector : variables that should explain y in the logistic regression.
@@ -164,7 +162,7 @@ reglog <- function(DF,
    #####
    vect_explicative <- vector()
    as.data.frame(DF) -> DF
-   explicatives <- colnames(DF)[colnames(DF) !=y]
+   explicatives <- colnames(DF)[colnames(DF) != y]
    n = 1
    for (var in explicatives) {#making a vector with the name of the variable displayed as many times as (levels - 1)
       if (is.numeric(DF[, var])) {
@@ -312,7 +310,7 @@ reglog <- function(DF,
 
 
    ##################################################
-   #              MATRICE DE RÉSULTATS              #
+   #              MATRICE DE RESULTATS              #
    ##################################################
    OR <- exp(mod_multi$coefficients) #exp de la fonction logit
    pval <- summary(mod_multi)$coefficients[,4]
@@ -366,7 +364,7 @@ if (FALSE){
 \n
 -----+-----------------------------+--------------------------------------
      |                             |
-     |    6) Résultats             |
+     |    6) Results               |
      |                             |
      +-----------------------------+\n")
 

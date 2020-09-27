@@ -4,7 +4,22 @@
 \alias{reglog}
 \title{Logistic Regression Function}
 \usage{
-reglog(DF,y,explicatives,...)
+reglog(
+  DF,
+  y,
+  explicatives = colnames(DF)[colnames(DF) != y],
+  alpha = 0.05,
+  dataprep = TRUE,
+  verbose = TRUE,
+  alpha_max = 0.2,
+  round = 3,
+  rowstimevariable = 10,
+  confirmation = FALSE,
+  keep = FALSE,
+  exit = "html",
+  stability = "TRUE",
+  ...
+)
 }
 \arguments{
 \item{DF}{dataframe, matrix or tibble that contains all explicatives variables and the variable to explain}

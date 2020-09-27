@@ -8,6 +8,7 @@ table1(
   DF,
   y,
   ynames = NULL,
+  make.names = TRUE,
   overall = TRUE,
   tests = TRUE,
   norm_test = TRUE,
@@ -15,15 +16,18 @@ table1(
   mutation = 40,
   legend = TRUE,
   title = TRUE,
-  exit = "excel"
+  round = 2,
+  exit = "html"
 )
 }
 \arguments{
 \item{DF}{dataframe : datas}
 
-\item{y}{character : columns that separte the dataframe}
+\item{y}{character : columns that can separte the dataframe}
 
 \item{ynames}{vector of characters (optionnal) : names to be put in table one columns instead of y levels.}
+
+\item{make.names}{(optionnal) : TRUE so that the colnames provided are formated}
 
 \item{overall}{booleen (optionnal) : TRUE if an "overall" column is wanted}
 
@@ -33,13 +37,15 @@ table1(
 
 \item{Khi2}{booleen (optionnal) : if TRUE, khi2 is prefered to fisher}
 
-\item{mutation}{numeric : number of categories to display for one variable. If more than "mutation" categories, the categories after this threeshold are wrapped into a "others" categorie.}
+\item{mutation}{numeric : number of modalities to display for one variable. If there is more than "mutation" categories, the modalities after this threeshold are wrapped into an "others" categorie.}
 
 \item{legend}{booleen (optionnal) : TRUE if a legend is wanted under the table}
 
 \item{title}{booleen (optionnal) : TRUE if a title is wanted}
 
-\item{exit}{character : among 'html', 'console' or 'excel'}
+\item{round}{(optionnal) : the number of digits to be display in the results}
+
+\item{exit}{character : 'html', 'console' or 'excel'}
 }
 \value{
 dataframe, excel file or html table

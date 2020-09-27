@@ -21,23 +21,25 @@ multivariate_selection(
 \arguments{
 \item{DF}{dataframe}
 
-\item{y}{character : variable to be explain by 'explicatives'}
+\item{y}{character : variable to explain by 'explicatives'}
 
 \item{explicatives}{vector of character : variables to be selected in the multivariate model}
 
-\item{keep}{character or vector of character (optional) : variables that will be kept in the model no matter of the criteria. Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.}
+\item{keep}{character or vector (optional) : variables that will be kept in the model no matter of its statistical importance Every variable known in the litterature to have interaction with y or other 'keep' variable should be listed in 'keep'.}
 
-\item{principal_factor}{(optional) : principal criteria to explain y. First variable to be selected and won't be removed from selection.}
+\item{principal_factor}{(optional) : principal criteria to explain y. It will be th first variable to be selected and won't be removed from selection.}
 
-\item{method}{character : can be backward}
+\item{method}{character : can be backward, forward. You can pass other arguments such as augmented or stepwise as follow "backward stepwise augmented".}
 
-\item{criteria}{character}
+\item{criteria}{character : the criteria that will be used to select models. Can be deviance, AIC and BIC.}
 
-\item{check_interactions}{logical}
+\item{check_interactions}{logical : wether interaction between the principal_factor and the other variables should be checked.}
 
-\item{alpha}{num}
+\item{alpha}{num : the threesold that should be used to consider a test as significant}
 
-\item{verbose}{logical}
+\item{verbose}{logical : whether the details of the calculs should be displayed on the console}
+
+\item{delta}{num : threeshold of difference in BIC or AIC to consider a model as more informative}
 }
 \value{
 

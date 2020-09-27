@@ -8,13 +8,13 @@
 #' @export
 #'
 #' @examples
-colnames_prep <-  function(object,type="make.names")
+colnames_prep <- function(object,type="make.names")
 {
 
    # Verification
    if (is.data.frame(object)) {
       names <- colnames(object)
-   } else if (is.vector(object)) {
+   } else if (is.vector(object) || is.character(object)) {
       names <- object
    } else {
       stop("'object' is not a dataframe nor a vector")
@@ -22,8 +22,10 @@ colnames_prep <-  function(object,type="make.names")
 
    if ("make.names" %in% type) {
       make.names <- TRUE
+      presentation <- FALSE
    } else if (type == "presentation") {
       presentation <- TRUE
+      make.names <- FALSE
    } else {
       stop("please make sure you provided a correct 'type' ")
    }

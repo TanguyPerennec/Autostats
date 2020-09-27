@@ -44,7 +44,7 @@ multivariate_selection <-
 
       if (missing(keep))
       {
-         keep = FALSE
+         keep <- FALSE
          if (verbose)
             message("no keep variables have been provided")
       }
