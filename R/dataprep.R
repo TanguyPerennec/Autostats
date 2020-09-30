@@ -622,8 +622,7 @@ data_prep_complete <- function(DF,
    {
       cat("\n",(nrow(DF1) - nrow(DF))," rows deleted (",round(100*(nrow(DF1) - nrow(DF))/(nrow(DF1)),0),"%)","...........",nrow(DF),"rows remaining")
       cat("\n\nData cleaning is over.\n\nExplicatives variables remaining are :\n",explicatives,
-          "It remains ",length(explicatives),"variables and ",nrow(DF),"observations
-   \n\n+--------------------------------------------------------------------------+\n")
+          "\n\nIt remains ",length(explicatives),"variables and ",nrow(DF),"observations")
    }
 
    return(DF)
