@@ -10,6 +10,7 @@ table1(
   ynames = NULL,
   make.names = TRUE,
   overall = TRUE,
+  Overall_name = "Overall",
   tests = TRUE,
   norm_test = TRUE,
   Khi2 = TRUE,
@@ -30,6 +31,8 @@ table1(
 \item{make.names}{(optionnal) : TRUE so that the colnames provided are formated}
 
 \item{overall}{booleen (optionnal) : TRUE if an "overall" column is wanted}
+
+\item{Overall_name}{(optionnal) : name of the 'overall' column}
 
 \item{tests}{booleen (optionnal) : TRUE if you want tests to be executed}
 

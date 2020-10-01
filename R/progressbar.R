@@ -50,11 +50,5 @@ progressbar <- function(
          variable,
          "                   "
          )
-
-
    }
-
-
-
-
    }

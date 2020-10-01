@@ -12,8 +12,9 @@
 stability_proportion <- function(DF,
                                  y = colnames(DF)[1],
                                  nbre=30,
-                                 criterias = c("AIC","BIC","deviance"),
-                                 methods = c("backward")
+                                 criterias = c("deviance"),
+                                 methods = c("backward","forward"),
+                                 keep_stability=NULL
                                  )
 {
    n_criterias <- length(criterias)
@@ -32,7 +33,7 @@ stability_proportion <- function(DF,
          {
             colDF <- sample(nrow(DF), nrow(DF), replace = TRUE)
             newDF <- DF[colDF, ]
-            s_dev_back <- multivariate_selection(newDF,y,criteria = critere,method = method_i,verbose = FALSE)
+            s_dev_back <- multivariate_selection(newDF,y,criteria = critere,method = method_i,verbose = FALSE,keep = keep_stability)
             #progressbar(i,total = nbre,variable = s_dev_back$vars_multi,text = "selected variables : ")
             for (var in colnames(DF)[colnames(DF) != y])
             {
@@ -132,9 +133,10 @@ variables_means <- function(DF,
       #variables_means_rslt[1+k,3] <- stats::var(variables_means_intermediate[1+k,2:nbre],na.rm=TRUE)
    }
 
-   ORs <- exp(as.numeric(variables_means_rslt[,2]))
+   ORs <- round(exp((as.numeric(variables_means_rslt[,2]))),3)
    variables_means_rslt <- cbind(variables_means_rslt,ORs)
    as.data.frame(variables_means_rslt[-1,]) ->variables_means_rslt
+   variables_means_rslt[,-3] -> variables_means_rslt
    colnames(variables_means_rslt) <- c("variables","mean coefficient","mean OR")
    return(variables_means_rslt)
 }

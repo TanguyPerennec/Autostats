@@ -42,7 +42,9 @@ reglog <- function(DF,
             confirmation=FALSE,
             keep=FALSE,
             exit = "html",
-            stability="TRUE",
+            stability=FALSE,
+            equation = FALSE,
+            title = TRUE,
             ...)
    {
 
@@ -196,8 +198,7 @@ reglog <- function(DF,
    rslt <- matrix(ncol = 7, nrow = (length(vect_explicative) + 1))
    rownames(rslt) <- c("",vect_explicative)
 
-   getinfo_glm <- function(mod,k,var)
-   {
+   getinfo_glm <- function(mod,k,var) {
       OR <- round(exp(as.numeric(mod$coefficients[k + 1])), round) # logit exponential
       pval <- summary(mod)$coefficients[k + 1, 4]
       IC <- paste0(round(suppressMessages(exp(confint(mod)))[k + 1, ], round),collapse = ";")
@@ -209,14 +210,12 @@ reglog <- function(DF,
    }
 
    i = 0
-   for (var_uni in explicatives)
-   {
-      progressbar(total = length(vect_explicative),i,variable = var_uni)
+   for (var_uni in explicatives) {
+      progressbar(total = length(vect_explicative)-1,i,variable = var_uni)
       mod_uni <- glm(DF[,c(y,var_uni)], family = "binomial")
       vector_var = vector()
       k = 0
-      if (is.numeric(DF[, var_uni]))
-      {
+      if (is.numeric(DF[, var_uni])) {
          i <- i + 1
          k <- k + 1
          ligneR <- getinfo_glm(mod_uni,k,var_uni)
@@ -275,26 +274,25 @@ reglog <- function(DF,
 
 
 
-   if (stability)
-   {
+   if (stability) {
 
-      stability_rslts <- stability_proportion(DF,y)
+      stability_rslts <- stability_proportion(DF,y,keep_stability = keep)
 
       meaningful_variables <- stability_select_meaningful(stability_rslts)
 
 
       variables_means_rslt <- variables_means(DF[,c(y,meaningful_variables)])
 
-      if (verbose)
-      {
+      if (verbose) {
+
          cat("
 \n
 \n Percentage of inclusion in models are : \n")
-         print(stability_rslts)
+         print(stability_rslts) #print compulsory
          cat("
 \n
 \n So meaningful variables are : \n")
-         cat(meaningful_variables,sep = " ; ")
+         print(meaningful_variables,sep = " ; ")
          cat('
 \n
 \n Coefficents means are :
@@ -312,6 +310,7 @@ reglog <- function(DF,
    ##################################################
    #              MATRICE DE RESULTATS              #
    ##################################################
+   rslt -> rslt_stability
    OR <- exp(mod_multi$coefficients) #exp de la fonction logit
    pval <- summary(mod_multi)$coefficients[,4]
    IC <- round(suppressMessages(exp(confint(mod_multi))),round)
@@ -326,14 +325,29 @@ reglog <- function(DF,
       rslt[n_ligne, 5:7] <- c(signif(OR[i + 1], round), IC_paste, p)
    }
 
-   for (n in 1:length(rslt[-1, 4]))
-   {
+   for (n in 1:length(rslt[-1, 4])) {
       p = as.numeric(rslt[n + 1, 4])
       round(p, round) -> p
       ifelse(p == 0, "<0.001", p) -> rslt[n + 1, 4]
    }
-   ##################################################
+
+
+   if (stability) {
+      rslt_stability <- matrix(nrow = nrow(rslt),ncol = 1)
+      i <- 0
+      for (variable in variables_means_rslt[,1]) {
+         i <- i + 1
+         n_ligne <- match(grep(variable,rslt[,1],value = TRUE),rslt[,1])
+         rslt_stability[n_ligne, 1] <- round(as.double(as.character(variables_means_rslt[i,3])),round)
+      }
+      rslt_stability[is.na(rslt_stability)] <- "-"
+      rslt <- cbind(rslt, rslt_stability)
+      rslt[1,] <- c("","OR","IC","pval","OR","IC","pval","mean OR")
+   } else {
       rslt[1,] <- c("","OR","IC","pval","OR","IC","pval")
+   }
+   ##################################################
+
       row.names(rslt) <- NULL
 
 
@@ -379,22 +393,50 @@ if (FALSE){
             append = FALSE,
             row.names = FALSE
          )
-      if ("console" %in% exit)
+
+      if ("console" %in% exit) {
          print(rslt)
+      }
+
       if ("html" %in% exit) {
          rslt <- as.data.frame(rslt[-1,])
-         colnames(rslt) = c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate")
+         rslt2 <- rslt
+         if (stability){
+            colnames(rslt) <-  c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate","Mean OR")
+            rslt <- flextable(rslt, col_keys =  c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate","Mean OR"))
+         } else {
+            colnames(rslt) <-  c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate")
+            rslt <- flextable(rslt, col_keys =  c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate"))
+         }
 
-         rslt <- flextable(rslt, col_keys =  c("variables","OR_univariate","IC_univariate","pval_univariate","OR_multivariate","IC_multivariate","pval_multivariate"))
 
          rslt <- delete_part(rslt,part = "header")
          rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "OR",IC_univariate = "IC95%",pval_univariate = "p-value",OR_multivariate = "OR",IC_multivariate = "IC95%",pval_multivariate = "p-value", top = FALSE)
-         rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "univariate modele",IC_univariate = "univariate modele",pval_univariate = "univariate modele",OR_multivariate = "multivariate modele",IC_multivariate = "multivariate modele",pval_multivariate = "multivariate modele", top = TRUE)
+         rslt <- add_header(x = rslt, variable = "variables",OR_univariate = "univariate model",IC_univariate = "univariate model",pval_univariate = "univariate model",OR_multivariate = "multivariate model",IC_multivariate = "multivariate model",pval_multivariate = "multivariate model", top = TRUE)
 
          rslt <- merge_at(rslt, part = "header",i = 1:1,j = 2:4)
          rslt <- merge_at(rslt, part = "header",i = 1:1,j = 5:7)
+
+         if (equation) {
+         footer <- paste0("Equation for odds using adjusted odds ratios for each variable \n","odds of"," y = ")
+         explicatives_multi <- colnames_prep(explicatives_multi,type = "presentation")
+         superfp <- officer::fp_text(vertical.align = "superscript", font.size = 8)
+         for (variable_multi in explicatives_multi) {
+            n_ligne <- match(grep(variable_multi,rslt2[,1],value = TRUE),rslt2[,1])
+            footer <- paste0(footer, rslt2[n_ligne,5] , as_paragraph("variable", as_chunk("1 if", props = superfp)))
+         }
+         rslt <- add_footer(rslt, variable = footer)
+         rslt <- merge_at(rslt, j = 1:ncol(rslt2), part = "footer")
+         rslt <- valign(rslt, valign = "bottom", part = "footer")
+         }
+
+         if (title) {
+            rslt <- add_header_lines(rslt,paste0("Logistic regression for ", colnames_prep(y,type = "presentation")))
+         }
+
          rslt <- theme_booktabs(rslt)
          rslt <- autofit(rslt)
+
 
       }
 

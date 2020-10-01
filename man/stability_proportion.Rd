@@ -8,8 +8,8 @@ stability_proportion(
   DF,
   y = colnames(DF)[1],
   nbre = 30,
-  criterias = c("AIC", "BIC", "deviance"),
-  methods = c("backward")
+  criterias = c("deviance"),
+  methods = c("backward", "forward")
 )
 }
 \arguments{

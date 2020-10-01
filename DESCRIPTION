@@ -48,4 +48,5 @@ Imports:
     questionr,
     readr,
     table1,
-    flextable
+    flextable,
+    officer
