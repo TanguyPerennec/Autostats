@@ -27,7 +27,7 @@ multivariate_selection <-
             check_interactions = FALSE,
             alpha = 0.05,
             verbose=TRUE,
-            delta=4)
+            delta=7)
    {
 
       #To ignore warnings during usage
@@ -236,20 +236,20 @@ multivariate_selection <-
                "no variable remainings but the variables to keep"
             }else {
                criteria_trigger <- ifelse(criteria == "deviance",alpha,delta)
-               print(model_test_df[k, 2] )
-               print(criteria_trigger)
+               #print(model_test_df[k, 2] )
+               #print(criteria_trigger)
                if (!is.na(model_test_df[k, 2]))
                {
                   if (model_test_df[k, 2] > criteria_trigger)
                   {
                      if (verbose)
-                        cat("\nThe best model exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+                        cat("\nThe best model exclude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
                      vars_remainings <- vars_remainings[vars_remainings != model_test_df[k,1]]
                      vars_out <- c(vars_out,model_test_df[k,1])
                   }else
                   {
                      if (verbose)
-                        cat("\nThe best model do not exlude any variable of the remainings (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta",criteria," threeshold = 10")),"):",vars_remainings)
+                        cat("\nThe best model do not exclude any variable of the remainings (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta",criteria," threeshold = 10")),"):",vars_remainings)
                      break
                   }
                }
@@ -390,14 +390,14 @@ multivariate_selection <-
                if (model_test_df[k,2] > ifelse(criteria == "deviance",alpha,7))
                {
                   if (verbose)
-                     cat("\nThe best model now exlude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
+                     cat("\nThe best model now exclude <",model_test_df[k,1], "> (",ifelse(criteria == "deviance","with likelihood ratio test : p =","with delta AIC ="),round(as.numeric(model_test_df[k,2]),3),"), so this variable is now excluded")
                   vars_remainings <- c(vars_remainings,model_test_df[k,1])
                   vars_included <- vars_included[vars_included != model_test_df[k,1]]
                }
                else
                {
                   if (verbose)
-                     cat("\nThe best model do not exlude any variable of the present model (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta ",criteria," threeshold = 10")),"):",vars_included)
+                     cat("\nThe best model do not exclude any variable of the present model (",ifelse(criteria == "deviance",paste0("with risk",alpha),paste0("with delta ",criteria," threeshold = 10")),"):",vars_included)
                }
                last_model <- stats::glm(formula = formulation(object = vars_included,y),family = "binomial",data = DF)
             }

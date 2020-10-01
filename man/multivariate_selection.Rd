@@ -15,7 +15,7 @@ multivariate_selection(
   check_interactions = FALSE,
   alpha = 0.05,
   verbose = TRUE,
-  delta = 4
+  delta = 7
 )
 }
 \arguments{
