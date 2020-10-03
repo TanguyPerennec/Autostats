@@ -1,12 +1,12 @@
 #' Table 1
 #'
-#' @param DF dataframe : datas
-#' @param y character : columns that can separte the dataframe
+#' @param DF dataframe : datas to be analysed
+#' @param y character : column that can separate the dataframe
 #' @param ynames vector of characters (optionnal) : names to be put in table one columns instead of y levels.
 #' @param make.names (optionnal) : TRUE so that the colnames provided are formated
 #' @param round (optionnal) : the number of digits to be display in the results
 #' @param overall booleen (optionnal) : TRUE if an "overall" column is wanted
-#' @param Overall_name (optionnal) : name of the 'overall' column
+#' @param overall_name (optionnal) : name of the 'overall' column
 #' @param mutation numeric : number of modalities to display for one variable. If there is more than "mutation" categories, the modalities after this threeshold are wrapped into an "others" categorie.
 #' @param legend booleen (optionnal) : TRUE if a legend is wanted under the table
 #' @param title booleen (optionnal) : TRUE if a title is wanted
@@ -15,25 +15,25 @@
 #' @param Khi2 booleen (optionnal) : if TRUE, khi2 is prefered to fisher
 #' @param exit character : 'html', 'console' or 'excel'
 #'
-#' @return dataframe, excel file or html table
+#' @return dataframe, excel file or html table depending on the exit parameter
 #' @export
 #' @import stringr
 #' @import stats
 #' @import flextable
 table1 <- function(DF,
-            y,
-            ynames = NULL,
-            make.names = TRUE,
-            overall = TRUE,
-            Overall_name = "Overall",
-            tests = TRUE,
-            norm_test = TRUE,
-            Khi2 = TRUE,
-            mutation = 40,
-            legend = TRUE,
-            title = TRUE,
-            round = 2,
-            exit = 'html')
+                   y,
+                   ynames = NULL,
+                   make.names = TRUE,
+                   overall = TRUE,
+                   overall_name = "Overall",
+                   tests = TRUE,
+                   norm_test = TRUE,
+                   Khi2 = TRUE,
+                   mutation = 40,
+                   legend = TRUE,
+                   title = TRUE,
+                   round = 2,
+                   exit = 'html')
 {
 
 
@@ -42,9 +42,9 @@ table1 <- function(DF,
    ##################################################
 
    ## Dataframe
-   if (is.data.frame(DF) || is.matrix(DF) || is.tbl(DF)) {
+   if (is.data.frame(DF) || is.matrix(DF)) {
       DF <- as.data.frame(DF,row.names = NULL)
-      if ( (make.names(colnames(DF)) != colnames(DF)) || make.names) {
+      if ( (make.names(colnames(DF)) != colnames(DF))) {
          colnames_prep(colnames(DF)) -> colnames(DF)
          colnames_prep(y) -> y
       }
@@ -112,8 +112,7 @@ table1 <- function(DF,
 
 
 
-   for (k in 1:levels_y)
-   {
+   for (k in 1:levels_y) {
       ligne2[k + first_column] <- paste0("N = ", table(DF[, y])[k]) #number of observations for each levels of y
    }
    numbers_observation <- ligne2
@@ -127,10 +126,10 @@ table1 <- function(DF,
 
    i <- 0
    num_variables <- vector()
-   colnames_definitive <- colnames_prep(colnames(DF),type = "presentation")
+   colnames_definitive <- colnames_prep(colnames(DF)[colnames(DF) !=y],type = "presentation")
 
-   for (column in colnames(DF_without_y))
-   {# useful for flextable presentation
+   for (column in colnames(DF_without_y)) {
+      # useful for flextable presentation
       i + 1 -> i
       if (is.numeric(DF_without_y[,column])) {
          num_variables <- c(num_variables,i)
@@ -142,24 +141,24 @@ table1 <- function(DF,
    ########################################################
    ###        Loop for each characteristics (var)       ###
    ########################################################
-   for (var in DF_without_y)
-   {
+   for (var in DF_without_y) {
       i <- i + 1
       varname <- colnames(DF_without_y)[i]
       progressbar(total = length(DF_without_y),i,variable = varname)
       ligne1 <- colnames_definitive[i]
-      if (exit == "html") {
-         ligne2 <- "\t \t Mean (SD)"
-         ligne3 <- "\t \t Median [min - max]"
-      } else {
-         ligne2 <- "      Mean (SD)"
-         ligne3 <- "      Median [min - max]"
-      }
+
 
       sign <- NULL # note if a special test is done (fischer, Wilcoxon...)
 
       if (is.numeric(var)) {
          ###  if numeric  ###########################################
+         if (exit == "html") {
+            ligne2 <- "\t \t Mean (SD)"
+            ligne3 <- "\t \t Median [min - max]"
+         } else {
+            ligne2 <- "      Mean (SD)"
+            ligne3 <- "      Median [min - max]"
+         }
          # Descriptive calculs
          mean_vars <- aggregate(var ~ DF[, y], FUN = "mean")
          mean_overall <- round(mean(var,na.rm = TRUE), round)
@@ -172,7 +171,6 @@ table1 <- function(DF,
          max_vars <- aggregate(var ~ DF[, y], FUN = "max")
          max_overall <- round(max(var, na.rm = TRUE),round)
          length_vars <- aggregate(var ~ DF[, y], FUN = "length")
-         length_overall <- length(var)
 
          if (overall) {
             ligne1 <- c(ligne1," ")
@@ -322,11 +320,25 @@ table1 <- function(DF,
          ## Variable with 2 levels #############################
          if (length(levels(var)) == 2) {
 
-            if (levels(var)[1] == "non" || levels(var)[1] == "NON") {
+            if (levels(var)[1] == "non" || levels(var)[1] == "NON" || levels(var)[1] == 0 || levels(var)[1] == "0") {
                if (levels(var)[2] == "oui")
                   var <- relevel(var, "oui")
                if (levels(var)[2] == "OUI")
                   var <- relevel(var, "OUI")
+               if (levels(var)[2] == "1") {
+                  var <- as.character(var)
+                  var[var == "0"] <- "non"
+                  var[var == "1"] <- "oui"
+                  var <- as.factor(var)
+                  var <- relevel(var, "oui")
+               }
+               if (levels(var)[2] == 1) {
+                  var <- as.character(var)
+                  var[var == 0] <- "non"
+                  var[var == 1] <- "oui"
+                  var <- as.factor(var)
+                  var <- relevel(var, "oui")
+               }
             }
             if (levels(var)[1] == "no" & levels(var)[2] == "yes") {
                var <- relevel(var, "yes")
@@ -405,7 +417,7 @@ table1 <- function(DF,
       }
 
       if (overall) {
-         coloverall <- paste(Overall_name,overall_observations,sep = "\nN = ")
+         coloverall <- paste(overall_name,overall_observations,sep = "\nN = ")
          definite_names <- c("characteristics",coloverall,colsy)
 
       } else {
@@ -433,22 +445,6 @@ table1 <- function(DF,
          bold(i = 1, part = "header", bold = TRUE) -> rslt
       rslt %>% fontsize(i = 2, part = "header", size = 20) %>%
          bold(i = 2, part = "header", bold = TRUE) -> rslt
-
-
-      #### Mise en gras des variables (- a faire)
-      #ligne=1
-      #var = 1
-      #while (var < length(DF))
-      #{
-      #   rslt %>% bold(i = ligne,j=1, part = "body", bold = TRUE) -> rslt
-      #   if (ligne %in% num_variables)
-      #   {
-      #      ligne <- ligne + 3
-      #   } else {
-      #      ligne <- ligne + 1
-      #   }
-      #   var <- var+1
-      #}
 
       rslt <- theme_booktabs(rslt)
       rslt <- autofit(rslt)
