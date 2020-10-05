@@ -430,7 +430,7 @@ table1 <- function(DF,
 
       rslt <- flextable(rslt, col_keys = colnames(rslt))
 
-      rslt <- add_footer(rslt, characteristics = "p-values have been obtained form a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
+      rslt <- add_footer(rslt, characteristics = "p-values have been obtained from a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
                          - a : Student test with Welch approximation
                          - b : Fisher's exact test
                          - c : Wilcoxon test" )
