@@ -126,7 +126,7 @@ table1 <- function(DF,
 
    i <- 0
    num_variables <- vector()
-   colnames_definitive <- colnames_prep(colnames(DF)[colnames(DF) !=y],type = "presentation")
+   colnames_definitive <- colnames_prep(colnames(DF)[colnames(DF) != y],type = "presentation")
 
    for (column in colnames(DF_without_y)) {
       # useful for flextable presentation
@@ -273,7 +273,40 @@ table1 <- function(DF,
 
 
          if (length(levels(var)) >= 2) {
-            tb <- table(DF[, y], var)
+
+            if (length(levels(var)) == 2) {
+
+               if (levels(var)[1] == "non" || levels(var)[1] == "NON" || levels(var)[1] == 0 || levels(var)[1] == "0") {
+                  if (levels(var)[2] == "oui")
+                     var <- relevel(var, "oui")
+                  if (levels(var)[2] == "OUI")
+                     var <- relevel(var, "OUI")
+                  if (levels(var)[2] == "1") {
+                     var <- as.character(var)
+                     var[var == "0"] <- "non"
+                     var[var == "1"] <- "oui"
+                     var <- as.factor(var)
+                     var <- relevel(var, "oui")
+                  }
+                  if (levels(var)[2] == 1) {
+                     var <- as.character(var)
+                     var[var == 0] <- "non"
+                     var[var == 1] <- "oui"
+                     var <- as.factor(var)
+                     var <- relevel(var, "oui")
+                  }
+               }
+               if (levels(var)[1] == "no" & levels(var)[2] == "yes") {
+                  var <- relevel(var, "yes")
+               }
+            }
+
+
+
+
+
+
+            tb <- table(DF[, y], var,useNA = "no")
             tbm <- margin.table(tb, 1)
             verif_level <- margin.table(table(var, DF[, y]), 2)
             verif <- TRUE
@@ -320,30 +353,6 @@ table1 <- function(DF,
          ## Variable with 2 levels #############################
          if (length(levels(var)) == 2) {
 
-            if (levels(var)[1] == "non" || levels(var)[1] == "NON" || levels(var)[1] == 0 || levels(var)[1] == "0") {
-               if (levels(var)[2] == "oui")
-                  var <- relevel(var, "oui")
-               if (levels(var)[2] == "OUI")
-                  var <- relevel(var, "OUI")
-               if (levels(var)[2] == "1") {
-                  var <- as.character(var)
-                  var[var == "0"] <- "non"
-                  var[var == "1"] <- "oui"
-                  var <- as.factor(var)
-                  var <- relevel(var, "oui")
-               }
-               if (levels(var)[2] == 1) {
-                  var <- as.character(var)
-                  var[var == 0] <- "non"
-                  var[var == 1] <- "oui"
-                  var <- as.factor(var)
-                  var <- relevel(var, "oui")
-               }
-            }
-            if (levels(var)[1] == "no" & levels(var)[2] == "yes") {
-               var <- relevel(var, "yes")
-            }
-
             ligne <- paste0(ligne1, " (", levels(var)[1], ") - no. (%)")
 
             if (overall) {
@@ -383,7 +392,7 @@ table1 <- function(DF,
                }
 
                if (overall) {
-                  overall_count <- addmargins(tb)[levels_y,n]
+                  overall_count <- addmargins(tb)[levels_y+1,n]
                   percent_overall <- signif(100*overall_count / length(var),3)
                   ligne <- c(ligne,paste0(overall_count,"  (",percent_overall,"%)"))
                }
