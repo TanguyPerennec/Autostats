@@ -7,9 +7,9 @@
 NA_rm_for_glm(
   DF,
   y = colnames(DF)[1],
-  EPV = 10,
+  EPV = 0,
   min_explicatives = 0.1 * (ncol(DF)),
-  floor_pval = 0.5,
+  floor_pval = 1,
   verbose = TRUE,
   method_NA = c("lessNA", "significance"),
   keep = FALSE,

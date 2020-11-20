@@ -224,7 +224,6 @@ NA_separation <-
 
 
 
-
 #' Removing of all NAs and change the dataframe if too many rows are deleted
 #'
 #' @param DF : the dataframe
@@ -245,9 +244,9 @@ NA_separation <-
 #' @examples
 NA_rm_for_glm <- function(DF,
             y = colnames(DF)[1],
-            EPV = 10,
+            EPV = 0,
             min_explicatives = 0.1*(ncol(DF)),
-            floor_pval = 0.5,
+            floor_pval = 1,
             verbose = TRUE,
             method_NA = c("lessNA", "significance"),
             keep = FALSE,

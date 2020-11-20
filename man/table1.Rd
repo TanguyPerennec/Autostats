@@ -7,10 +7,11 @@
 table1(
   DF,
   y,
+  paired = FALSE,
   ynames = NULL,
   make.names = TRUE,
   overall = TRUE,
-  Overall_name = "Overall",
+  overall_name = "Overall",
   tests = TRUE,
   norm_test = TRUE,
   Khi2 = TRUE,
@@ -22,9 +23,9 @@ table1(
 )
 }
 \arguments{
-\item{DF}{dataframe : datas}
+\item{DF}{dataframe : datas to be analysed}
 
-\item{y}{character : columns that can separte the dataframe}
+\item{y}{character : column that can separate the dataframe}
 
 \item{ynames}{vector of characters (optionnal) : names to be put in table one columns instead of y levels.}
 
@@ -32,7 +33,7 @@ table1(
 
 \item{overall}{booleen (optionnal) : TRUE if an "overall" column is wanted}
 
-\item{Overall_name}{(optionnal) : name of the 'overall' column}
+\item{overall_name}{(optionnal) : name of the 'overall' column}
 
 \item{tests}{booleen (optionnal) : TRUE if you want tests to be executed}
 
@@ -51,7 +52,7 @@ table1(
 \item{exit}{character : 'html', 'console' or 'excel'}
 }
 \value{
-dataframe, excel file or html table
+dataframe, excel file or html table depending on the exit parameter
 }
 \description{
 Table 1

@@ -49,4 +49,5 @@ Imports:
     readr,
     table1,
     flextable,
-    officer
+    officer,
+    survival

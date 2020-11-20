@@ -17,7 +17,9 @@ reglog(
   confirmation = FALSE,
   keep = FALSE,
   exit = "html",
-  stability = "TRUE",
+  stability = FALSE,
+  equation = FALSE,
+  title = TRUE,
   ...
 )
 }

@@ -9,7 +9,8 @@ stability_proportion(
   y = colnames(DF)[1],
   nbre = 30,
   criterias = c("deviance"),
-  methods = c("backward", "forward")
+  methods = c("backward", "forward"),
+  keep_stability = NULL
 )
 }
 \arguments{

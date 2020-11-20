@@ -1,0 +1,372 @@
+---
+title: "Stats GETUG16"
+author: "Tanguy Perennec"
+date: "10/30/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+DF <- readxl::read_xlsx('~/MEGA/ARTICLES/Loge prostate > 75 ans/data/Base modifiée.xlsx', na=c(".",","),n_max = 70)
+colnames(DF)
+```
+
+```{r}
+ 
+DF$HTA <- relevel(factor(DF$HTA),"Oui")
+DF$Diabète <- relevel(factor(DF$Diabète),"Oui")
+DF$Tabagisme <- relevel(factor(DF$Tabagisme),"Oui")
+DF$`Chirurgie ano-rectale` <- relevel(factor(DF$`Chirurgie ano-rectale`),"Oui")
+DF$`ATCD psy` <- relevel(factor(DF$`ATCD psy`),"Oui")
+DF$`ATCD Cardio` <- relevel(factor(DF$`ATCD Cardio`),"Oui")
+
+DF$`Score de Gleason total`<- sapply(DF["Score de Gleason total"],FUN=as.character)
+DF$Gleason <- sapply(DF["Score de Gleason (pièce obligatoire 1)"],FUN=as.character)
+DF$Gleason2 <- sapply(DF["Score de Gleason (pièce obligatoire 2)"],FUN=as.character)
+for(i in seq(nrow(DF))){
+   if (DF$`Score de Gleason total`[i] == "7"){
+      DF$Gleason[i] <- paste(DF$Gleason[i,], DF["Score de Gleason (pièce obligatoire 2)"][i,],sep=" + ")
+   }else{
+      DF$Gleason[i] <- DF$`Score de Gleason total`[i]
+   }
+}
+DF$Gleason <- relevel(factor(DF$`Gleason`),"6")
+DF["PSA pré-prostatectomie"] <- sapply(DF["PSA pré-prostatectomie"],FUN=as.numeric)
+                      
+                  
+table1(DF[c('bras',"Age à la randomisation","HTA","Diabète","Tabagisme","Chirurgie ano-rectale", "globalqol","score_IADL_0","ATCD Cardio","ATCD psy","Gleason","pT (TNM 2005)","PSA pré-prostatectomie")],'bras')
+```
+
+
+
+```{r}
+library(survival)
+library(survminer)
+# Date censure = progression ou PDV ou décès
+DF$censure<- DF$`Date recidive 1`
+DF$censure[is.na(DF$censure)] <- DF$`Date dernières nouvelles ou décès`
+DF$t <- (DF$censure - DF$DATVIS...18)/365
+
+DF$Recidive1 <- DF$CENTRE...1
+DF$Recidive1[!is.na(DF$`Date recidive 1`)] <- 1
+DF$Recidive1[is.na(DF$`Date recidive 1`)] <- 0
+
+km_global <- survfit(Surv(DF$t,DF$Recidive1)~bras,data=DF)
+ggsurvplot(km_global,risk.table = T,
+           xlab='Time (year)', 
+           ylab='Survival probability', 
+           break.time.by=1,
+           ggtheme = theme_classic(),
+           palette = "lancet",
+           tables.theme = theme_cleantable(),
+           title="Biochemical free survival",
+           pval = TRUE,
+           conf.int = FALSE,
+           legend="bottom",
+           legend.title='Use of Hormon therapy',
+           legend.labs=c('No','Yes'),
+           xlim=c(0,8)
+           ) -> plot2
+km_global
+plot2
+
+```
+```{r}
+plot(km_global,fun = "cloglog")
+
+```
+
+```{r}
+DF$Recidive1 -> DF$Recidive2
+DF$Recidive2[DF$`Statut vital du patient` == "Décédé"] <- 1
+km_global <- survfit(Surv(DF$t,DF$Recidive2)~bras,data=DF)
+ggsurvplot(km_global,risk.table = T,
+           xlab='Time (year)', 
+           ylab='Survival probability', 
+           break.time.by=1,
+           ggtheme = theme_classic(),
+           palette = "lancet",
+           tables.theme = theme_cleantable(),
+           title="Biochemical free and alive survival",
+           pval = TRUE,
+           conf.int = F,
+           legend="bottom",
+           legend.title='Use of Hormon therapy',
+           legend.labs=c('No','Yes'),
+           xlim=c(0,12)
+           ) -> plot2
+
+plot2
+```
+```{r}
+plot(km_global,fun = "cloglog")
+```
+```{r}
+DF$GleasonT <- DF$`Score de Gleason total`
+km_global <- survfit(Surv(DF$t,DF$Recidive2)~bras + GleasonT,data=DF)
+ggsurvplot(km_global,risk.table = T,
+           xlab='Time (year)', 
+           ylab='Survival probability', 
+           break.time.by=1,
+           ggtheme = theme_classic(),
+           tables.theme = theme_cleantable(),
+           title="Biochemical free and alive survival",
+           conf.int = F,
+           xlim=c(0,12)
+           ) -> plot2
+
+plot2$plot + theme_bw()+facet_wrap(~GleasonT)
+```
+
+
+```{r}
+DF$`Statut vital du patient` -> DF$décès
+DF$décès[DF$décès == "vivant"] <- 0
+DF$décès[DF$décès != 0] <- 1
+DF$décès <- as.numeric(DF$décès)
+
+DF$t2 <- ( DF$`Date dernières nouvelles ou décès` - DF$DATVIS...18)/365
+
+km_global <- survfit(Surv(DF$t2,DF$décès)~bras,data=DF)
+ggsurvplot(km_global,risk.table = T,
+           xlab='Time (year)', 
+           ylab='OS', 
+           break.time.by=1,
+           ggtheme = theme_classic(),
+           palette = "lancet",
+           tables.theme = theme_cleantable(),
+           title="Overall survival",
+           pval = TRUE,
+           conf.int = F,
+           legend="bottom",
+           legend.title='Use of Hormon therapy',
+           legend.labs=c('No','Yes'),
+           xlim=c(0,6)
+           ) -> plot2
+
+plot2
+```
+```{r}
+DF$`Statut vital du patient` -> DF$décès
+DF$décès[DF$décès == "vivant"] <- 0
+DF$décès[DF$décès != 0] <- 1
+DF$décès <- as.numeric(DF$décès)
+
+DF$t2 <- ( DF$`Date dernières nouvelles ou décès` - DF$DATVIS...18)/365
+
+km_global <- survfit(Surv(DF$t2,DF$décès)~bras,data=DF)
+ggsurvplot(km_global,risk.table = T,
+           xlab='Time (year)', 
+           ylab='OS', 
+           break.time.by=1,
+           ggtheme = theme_classic(),
+           palette = "lancet",
+           tables.theme = theme_cleantable(),
+           title="Overall survival",
+           pval = TRUE,
+           conf.int = F,
+           legend="bottom",
+           legend.title='Use of Hormon therapy',
+           legend.labs=c('No','Yes'),
+           xlim=c(0,12)
+           ) -> plot2
+
+plot2
+```
+
+```{r}
+plot(km_global,fun = "cloglog")
+```
+
+```{r}
+
+DF$Cardiaque = DF$`ATCD Cardio`
+km_global <- survfit(Surv(DF$t2,DF$décès)~bras + Cardiaque,data=DF)
+ggsurvplot(km_global,risk.table = T,
+           xlab='Time (year)', 
+           ylab='OS', 
+           break.time.by=1,
+           ggtheme = theme_classic(),
+           palette = "lancet",
+           tables.theme = theme_cleantable(),
+           title="Overall survival",
+           pval = FALSE,
+           conf.int = F,
+           xlim=c(0,12),
+           data = DF
+           ) -> plot2
+
+plot2$plot + theme_bw()+facet_wrap(~Cardiaque)
+```
+
+
+```{r}
+
+explicatives = c("bras","Tabagisme","HTA","Diabète","ATCD Cardio","Score de Gleason total","pT (TNM 2005)")
+DF$time=DF$t
+DF$event=DF$Recidive2
+   time="time"
+   event="event"
+   verbose = TRUE
+   round=2
+   keep = FALSE
+
+
+   as.data.frame(DF) -> DF
+   DF_expl <- DF[,c(explicatives,time,event)]
+
+
+   NA_rm_for_glm(DF_expl,method_NA = "lessNA",EPV=1) -> DF_expl
+   DF_expl[,"surv"] <- Surv(as.numeric(DF_expl[ ,time]),as.numeric(DF_expl[ ,event]))
+
+
+   # Constructing 'vect_explicative'
+   #####
+   vect_explicative <- vector()
+   as.data.frame(DF_expl) -> DF_expl
+   n = 1
+   for (var in explicatives) {#making a vector with the name of the variable displayed as many times as (levels - 1)
+      if (is.numeric(DF_expl[, var])) {
+         vect_explicative[n] <- var
+         n <- n + 1
+      } else{
+         as.factor(DF_expl[, var]) -> DF_expl[,var]
+         levels_var <- length(levels(DF_expl[, var]))
+         vect_explicative[n:(n + levels_var - 2)] <- rep(var, (levels_var - 1))
+         n <- n + levels_var - 1
+      }
+   }
+   #####
+
+   if (verbose) cat(
+      "\n
+\n
+-----+-----------------------------+--------------------------------------
+     |                             |
+     |    1) UNIVARIATE MODEL      |
+     |                             |
+     +-----------------------------+\n
+")
+
+
+   rslt <- matrix(ncol = 7, nrow = (length(vect_explicative) + 1))
+   rownames(rslt) <- c("",vect_explicative)
+
+   getinfo_cox <- function(mod,k,var,cat) {
+      HR <- round(exp(as.numeric(mod$coefficients[k + 1])), round)
+      pval <- summary(mod)$coefficients[k + 1, 5]
+      IC <- paste0(round(suppressMessages(exp(confint(mod)))[k + 1, ], round),collapse = ";")
+      IC <- paste0("[",IC,"]")
+      name_var <- name_level<- var
+      if (cat != 'num') {
+         name_level <- stringr::str_split(rownames(summary(mod)$coefficients)[k+1], var)[[1]][2]
+         name_var <- ifelse(name_level == "",name_var,(paste0(name_var," (",name_level ,")")))
+      }
+      return(c(name_var,HR,IC,pval,name_level))
+   }
+
+   i = 0
+   for (var_uni in explicatives) {
+      progressbar(total = length(vect_explicative)-1,i,variable = var_uni)
+      mod_uni <- survival::coxph(as.formula(DF_expl[,c("surv",var_uni)]),data=DF_expl)
+      vector_var = vector()
+      k = 0
+      if (is.numeric(DF_expl[, var_uni])) {
+         i <- i + 1
+         ligneR <- getinfo_cox(mod_uni,k,var_uni,"num")
+         vector_var[i] <- var_uni
+         rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
+         row.names(rslt)[i + 1] <- var_uni
+      } else {
+         while (k + 1 < length(levels(DF_expl[, var_uni]))) {
+            i <- i + 1
+            k <- k + 1
+            ligneR <- getinfo_cox(mod_uni,k-1,var_uni,'cat')
+            vector_var[i] <- var_uni
+            rslt[i + 1, ] <- c(ligneR[1:4], "-", "-", "-")
+            row.names(rslt)[i + 1] <- paste0(var_uni,ligneR[5])
+         }
+      } #else of is.numeric
+   } # end of loop
+
+   ##################################################
+
+
+
+   ##################################################
+   #               MULTIVARIATE MODEL               #
+   ##################################################
+   if (verbose) cat("
+\n
+\n
+-----+-----------------------------+--------------------------------------
+     |                             |
+     |    3) MULTIVARIATE MODEL    |
+     |                             |
+     +-----------------------------+\n")
+
+
+   # Variable selection
+   #explicatives_multi <- multivariate_selection(DF_expl[,c(y,explicatives)],y,keep = keep2)
+   #explicatives_multi <- explicatives_multi$vars_multi
+   # Definitive model
+   step(survival::coxph(as.formula(DF_expl[,c("surv",explicatives)]),data=DF_expl)) -> mod_multi
+
+   survival::coxph(as.formula(DF_expl[,c("surv",attr(mod_multi$terms,"term.labels"))]),data=DF_expl) -> mod_multi
+
+   cox.zph(mod_multi) #test proportionnal hazards
+   ##################################################
+
+
+   ##################################################
+   #              MATRICE DE RESULTATS              #
+   ##################################################
+   HR <- exp(mod_multi$coefficients)
+   pval <- summary(mod_multi)$coefficients[,5]
+   IC <- round(suppressMessages(exp(confint(mod_multi))),round)
+   i <- 0
+
+   for (HR_var in names(HR)) {
+      i <- i + 1
+      n_ligne <- match(HR_var,rownames(rslt))
+      p <- round(as.numeric(pval[i]), round)
+      p <- ifelse(p == 0, "<0.001", p)
+      IC_paste <- paste0("[",IC[i, 1], ";", IC[i, 2],"]")
+      rslt[n_ligne, 5:7] <- c(signif(HR[i], round), IC_paste, p)
+   }
+
+   for (n in 1:length(rslt[-1, 4])) {
+      p = as.numeric(rslt[n + 1, 4])
+      round(p, round) -> p
+      ifelse(p == 0, "<0.001", p) -> rslt[n + 1, 4]
+   }
+
+   rslt[1,] <- c("","HR","IC","pval","HR","IC","pval")
+
+   row.names(rslt) <- NULL
+
+
+
+
+
+
+   rslt <- as.data.frame(rslt[-1,])
+   colnames(rslt) <-  c("variables","HR_univariate","IC_univariate","pval_univariate","HR_multivariate","IC_multivariate","pval_multivariate")
+   rslt <- flextable(rslt, col_keys =  c("variables","HR_univariate","IC_univariate","pval_univariate","HR_multivariate","IC_multivariate","pval_multivariate"))
+
+
+
+   rslt <- delete_part(rslt,part = "header")
+   rslt <- add_header(x = rslt, variable = "variables",HR_univariate = "HR",IC_univariate = "IC95%",pval_univariate = "p-value",HR_multivariate = "HR",IC_multivariate = "IC95%",pval_multivariate = "p-value", top = FALSE)
+   rslt <- add_header(x = rslt, variable = "variables",HR_univariate = "univariate model",IC_univariate = "univariate model",pval_univariate = "univariate model",HR_multivariate = "multivariate model",IC_multivariate = "multivariate model",pval_multivariate = "multivariate model", top = TRUE)
+
+   rslt <- merge_at(rslt, part = "header",i = 1:1,j = 2:4)
+   rslt <- merge_at(rslt, part = "header",i = 1:1,j = 5:7)
+
+
+   rslt <- theme_booktabs(rslt)
+   rslt <- autofit(rslt)
+
+rslt
+```
+

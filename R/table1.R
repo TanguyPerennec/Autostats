@@ -22,6 +22,7 @@
 #' @import flextable
 table1 <- function(DF,
                    y,
+                   paired=FALSE,
                    ynames = NULL,
                    make.names = TRUE,
                    overall = TRUE,
@@ -80,7 +81,7 @@ table1 <- function(DF,
    if (!is.numeric(mutation))
       stop("'mutation' should be numeric")
 
-   format_data(DF) -> DF #plain and no plural factors
+   autostats::format_data(DF) -> DF #plain and no plural factors
    ##################################################
 
 
@@ -303,9 +304,6 @@ table1 <- function(DF,
 
 
 
-
-
-
             tb <- table(DF[, y], var,useNA = "no")
             tbm <- margin.table(tb, 1)
             verif_level <- margin.table(table(var, DF[, y]), 2)
@@ -391,6 +389,11 @@ table1 <- function(DF,
                   ligne <- paste0(" \t \t  ", levels(var)[n])
                }
 
+               tb <- table(DF[, y], var,useNA = "no")
+               tbm <- margin.table(tb, 1)
+
+
+
                if (overall) {
                   overall_count <- addmargins(tb)[levels_y+1,n]
                   percent_overall <- signif(100*overall_count / length(var),3)
@@ -445,14 +448,16 @@ table1 <- function(DF,
                          - c : Wilcoxon test" )
       nb_colums <- ifelse(overall,levels_y + 1,levels_y)
       nb_colums <- ifelse(tests,nb_colums + 1,nb_colums)
-      rslt <- merge_at(rslt, j = 1:nb_colums, part = "footer")
+      rslt <- merge_at(rslt, j = 1:(nb_colums+1), part = "footer")
       rslt <- valign(rslt, valign = "bottom", part = "footer")
       if (title) {
-         rslt <- add_header_lines(rslt,paste0("Table 1. Patients baseline characteristics by study group ( ", colnames_prep(y,type = "presentation"),' )'))
+         rslt <- add_header_lines(rslt,paste0("Table X. Patients baseline characteristics by study group ( ", colnames_prep(y,type = "presentation"),' )'))
       }
-      rslt %>% fontsize(i = 1, part = "header", size = 24) %>%
+      rslt %>%
+         fontsize(i = 1, part = "header", size = 24) %>%
          bold(i = 1, part = "header", bold = TRUE) -> rslt
-      rslt %>% fontsize(i = 2, part = "header", size = 20) %>%
+      rslt %>%
+         fontsize(i = 2, part = "header", size = 20) %>%
          bold(i = 2, part = "header", bold = TRUE) -> rslt
 
       rslt <- theme_booktabs(rslt)
