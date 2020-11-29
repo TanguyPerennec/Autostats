@@ -50,4 +50,5 @@ Imports:
     table1,
     flextable,
     officer,
-    survival
+    survival,
+    RVAideMemoire

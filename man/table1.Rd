@@ -8,6 +8,7 @@ table1(
   DF,
   y,
   paired = FALSE,
+  strata = NULL,
   ynames = NULL,
   make.names = TRUE,
   overall = TRUE,

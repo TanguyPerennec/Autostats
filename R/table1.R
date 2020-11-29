@@ -20,9 +20,11 @@
 #' @import stringr
 #' @import stats
 #' @import flextable
+#' @import RVAideMemoire
 table1 <- function(DF,
                    y,
                    paired=FALSE,
+                   strata=NULL,
                    ynames = NULL,
                    make.names = TRUE,
                    overall = TRUE,
@@ -34,7 +36,9 @@ table1 <- function(DF,
                    legend = TRUE,
                    title = TRUE,
                    round = 2,
-                   exit = 'html')
+                   significance = F,
+                   exit = 'html'
+                   )
 {
 
 
@@ -52,6 +56,7 @@ table1 <- function(DF,
    } else {
       stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
    }
+
 
    if (!is.character(y) || !(y %in% colnames(DF)))
       stop("y must be a character variable, part of DF")
@@ -81,8 +86,17 @@ table1 <- function(DF,
    if (!is.numeric(mutation))
       stop("'mutation' should be numeric")
 
+   if (!is.logical(paired))
+      stop("'paired' should be a logical")
+
+
+
    autostats::format_data(DF) -> DF #plain and no plural factors
    ##################################################
+
+
+
+
 
 
 
@@ -111,8 +125,6 @@ table1 <- function(DF,
       }
    }
 
-
-
    for (k in 1:levels_y) {
       ligne2[k + first_column] <- paste0("N = ", table(DF[, y])[k]) #number of observations for each levels of y
    }
@@ -123,6 +135,8 @@ table1 <- function(DF,
    }
    tabf <- rbind(tabf, ligne2)
    ##################################################
+
+
 
 
    i <- 0
@@ -139,6 +153,11 @@ table1 <- function(DF,
 
    i <- 0
 
+
+
+
+
+
    ########################################################
    ###        Loop for each characteristics (var)       ###
    ########################################################
@@ -148,11 +167,13 @@ table1 <- function(DF,
       progressbar(total = length(DF_without_y),i,variable = varname)
       ligne1 <- colnames_definitive[i]
 
+      sign <- NULL # sign store a note if a special test is done (fischer, Wilcoxon...)
 
-      sign <- NULL # note if a special test is done (fischer, Wilcoxon...)
 
+      #----------------------------------------------------------#
+      #--  if numeric  ------------------------------------------#
+      #----------------------------------------------------------#
       if (is.numeric(var)) {
-         ###  if numeric  ###########################################
          if (exit == "html") {
             ligne2 <- "\t \t Mean (SD)"
             ligne3 <- "\t \t Median [min - max]"
@@ -160,7 +181,7 @@ table1 <- function(DF,
             ligne2 <- "      Mean (SD)"
             ligne3 <- "      Median [min - max]"
          }
-         # Descriptive calculs
+         #####  Descriptive calculs  #####
          mean_vars <- aggregate(var ~ DF[, y], FUN = "mean")
          mean_overall <- round(mean(var,na.rm = TRUE), round)
          median_vars <- aggregate(var ~ DF[, y], FUN = "median")
@@ -192,9 +213,9 @@ table1 <- function(DF,
          }
 
 
-
-         if (tests) {
-            # 1. Verification des conditions d'application
+         ### if not paired ###
+         if (tests & !paired) {
+            # Conditions then test
             verif <- TRUE
             ncst <- TRUE
             p <- "-"
@@ -215,7 +236,7 @@ table1 <- function(DF,
                   variance_equal <- ifelse(var.test(var ~ DF[, y])$p.value > 0.05,TRUE,FALSE)
                }
                if (ncst & sd(var, na.rm = TRUE) != 0) {
-                  # Conditions d'application = loi normale ou n > 30 respectées si verif == TRUE
+                  # if normale or n > 30 : verif == TRUE
                   if (verif) {
                      if (variance_equal) {
                         p <- signif(t.test(var ~ DF[, y],var.equal = TRUE)$p.value, 3)
@@ -232,7 +253,40 @@ table1 <- function(DF,
                }
             }
             ligne1 <- c(ligne1, p)
-         }else {
+         }else
+
+         ### if paired ###
+         if (tests & paired) {
+            if (!is.vector(strata) & !(TRUE %in% (strata %in% colnames(DF)))) {
+               stop(' /!\ usable strata is not provided ')
+            }else{
+               if ( length(strata) < nrow(DF) ) {
+                  lenstrat <- length(strata)
+                  new_strata <- vector()
+                  for (index_i in seq(lenstrat)) {
+                     new_strata <- c(new_strata,DF[,strata[index_i]])
+                  }
+                  strata <- new_strata
+                  strata_col <- TRUE
+               }else{}
+            }
+
+            if (strata_col) {
+               new_element <- vector()
+               for (index_i in seq(lenstrat)) {
+                  new_element <- c(new_element,var)
+               }
+               element <- new_element
+            } else {
+               element <- var
+            }
+            p <- signif(t.test(element,strata,paired = TRUE)$p.value,3)
+            p <- ifelse(significance,p,ifelse(p < 0.0001,"< 0.0001",p))
+
+            ligne1 <- c(ligne1, p)
+         }
+         ##
+         else{
             ligne1 <- c(ligne1, " ")
          }
          ligne2 <- c(ligne2, " ")
@@ -243,17 +297,17 @@ table1 <- function(DF,
       }
 
 
-      #
-      ###########################################
-      ###########################################
-      #
 
 
 
+
+      #----------------------------------------------------------#
+      #--  if non numeric  --------------------------------------#
+      #----------------------------------------------------------#
       else{
-         ###  if non numeric  ###########################################
 
-         for (it in var) { #if a modality's lenght is > 40, we shrink it to 40 characters to fit in the table
+         #if a modality's lenght is > 40 characters, we shrink it to 40 characters to fit in the table
+         for (it in var) {
             if (!is.na(it)) {
                if (stringr::str_length(it) > 40)
                   var[var == it] <- paste0(substr(it, 1, 40), "...")
@@ -261,7 +315,8 @@ table1 <- function(DF,
          }
 
          var <- as.factor(var)
-         if (length(levels(var)) >= mutation) { #if there is more than 'mutation' modalities, the last modalities are grouped in 'others' modality
+         #if there is more than 'mutation' modalities, the last modalities are grouped in 'others' modality
+         if (length(levels(var)) >= mutation) {
             nvar <- as.vector(var)
             for (other_levels_i in mutation:length(levels(var))) {
                other_levels <- levels(var)[other_levels_i]
@@ -272,10 +327,11 @@ table1 <- function(DF,
          }
 
 
-
          if (length(levels(var)) >= 2) {
 
+            # Relevel to have the 'yes' level first
             if (length(levels(var)) == 2) {
+
 
                if (levels(var)[1] == "non" || levels(var)[1] == "NON" || levels(var)[1] == 0 || levels(var)[1] == "0") {
                   if (levels(var)[2] == "oui")
@@ -303,9 +359,10 @@ table1 <- function(DF,
             }
 
 
-
             tb <- table(DF[, y], var,useNA = "no")
             tbm <- margin.table(tb, 1)
+
+            # Application conditions verification
             verif_level <- margin.table(table(var, DF[, y]), 2)
             verif <- TRUE
             for (lev in verif_level) {
@@ -328,19 +385,30 @@ table1 <- function(DF,
                   }
                }
 
-               if (condition_chi2 > 1) {
+               if (condition_chi2 > 1 | (condition_chi2 == 1 & length(levels(var)) > 2) ) {
                   condition_chi2_B <- FALSE
                }
-               if (condition_chi2 == 1 & length(levels(var)) > 2) {
-                  condition_chi2_B <- FALSE
-               }
-               if (condition_chi2_B) {
-                  clig <- chisq.test(var, DF[, y])$p.value                    # Chi2 test
-                  clig <- signif(clig, 3)
-               } else{
-                  clig <- fisher.test(var, DF[, y], simulate.p.value = TRUE)$p.value
-                  clig <- signif(clig, 3)
-                  sign <- " (b)"
+
+               ## if paired ##
+               if (paired) {
+                  if (length(levels(var)) == 2) {
+                     clig <- mcnemar.test(var,DF[,y])$p.value
+                     clig <- signif(clig, 3)
+                     clig <- ifelse(significance, clig,ifelse(clig < 0.0001,"< 0.0001",clig))
+                  } else {
+                     clig <- "-"
+                  }
+               ## if not paired ##
+                }else {
+                  # if verif ok chi2, else Fisher
+                  if (condition_chi2_B) {
+                     clig <- chisq.test(var, DF[, y])$p.value
+                     clig <- signif(clig, 3)
+                  } else{
+                     clig <- fisher.test(var, DF[, y], simulate.p.value = TRUE)$p.value
+                     clig <- signif(clig, 3)
+                     sign <- " (b)"
+                  }
                }
             }
          } else{
@@ -441,11 +509,11 @@ table1 <- function(DF,
       colnames(rslt) <- definite_names
 
       rslt <- flextable(rslt, col_keys = colnames(rslt))
-
-      rslt <- add_footer(rslt, characteristics = "p-values have been obtained from a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
+      text_footer <- ifelse(test = paired,"p-values have been obtained from paired t test for continuous variables and mac nemar test for categorical variables","p-values have been obtained from a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
                          - a : Student test with Welch approximation
                          - b : Fisher's exact test
-                         - c : Wilcoxon test" )
+                         - c : Wilcoxon test")
+      rslt <- add_footer(rslt, characteristics = text_footer)
       nb_colums <- ifelse(overall,levels_y + 1,levels_y)
       nb_colums <- ifelse(tests,nb_colums + 1,nb_colums)
       rslt <- merge_at(rslt, j = 1:(nb_colums+1), part = "footer")
