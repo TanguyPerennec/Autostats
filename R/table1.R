@@ -30,6 +30,8 @@ table1 <- function(DF,
                    overall = TRUE,
                    overall_name = "Overall",
                    tests = TRUE,
+                   method = "classic",
+                   adjusted = NULL,
                    norm_test = TRUE,
                    Khi2 = TRUE,
                    mutation = 40,
@@ -43,7 +45,7 @@ table1 <- function(DF,
 {
 
 
-   version_pkg = '0.0.2'
+   version_pkg = '0.0.3'
 
    ##################################################
    #    Arguments verification / transformation     #
@@ -56,10 +58,7 @@ table1 <- function(DF,
          colnames_prep(colnames(DF)) -> colnames(DF)
          colnames_prep(y) -> y
       }
-   } else {
-      stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
-   }
-
+   } else stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
 
    if (!is.character(y) || !(y %in% colnames(DF)))
       stop("y must be a character variable, part of DF")
