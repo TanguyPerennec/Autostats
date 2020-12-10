@@ -37,10 +37,13 @@ table1 <- function(DF,
                    title = TRUE,
                    round = 2,
                    significance = F,
-                   exit = 'html'
+                   exit = 'html',
+                   name_sheet = 'results'
                    )
 {
 
+
+   version_pkg = '0.0.2'
 
    ##################################################
    #    Arguments verification / transformation     #
@@ -64,6 +67,7 @@ table1 <- function(DF,
    DF[, y] <- as.factor(DF[[y]])
    levels_y <- length(levels(DF[, y]))
    DF_without_y <- DF[, -match(y, colnames(DF))]
+
 
    if (is.null(ynames))
       ynames <- levels(DF[, y])
@@ -89,14 +93,21 @@ table1 <- function(DF,
    if (!is.logical(paired))
       stop("'paired' should be a logical")
 
+   if (is.logical(make.names)) {
+      if (make.names) {
+         colnames_definitive <- colnames_prep(colnames(DF)[colnames(DF) != y],type = "presentation")
+      } else {
+         colnames_definitive <- colnames(DF)[colnames(DF) != y]
+      }
+   }
+   else {
+      warning('"make.name" should be logical ; "make.name" is considered as False')
+      colnames_definitive <- colnames(DF)
+   }
 
 
    autostats::format_data(DF) -> DF #plain and no plural factors
    ##################################################
-
-
-
-
 
 
 
@@ -137,11 +148,8 @@ table1 <- function(DF,
    ##################################################
 
 
-
-
    i <- 0
    num_variables <- vector()
-   colnames_definitive <- colnames_prep(colnames(DF)[colnames(DF) != y],type = "presentation")
 
    for (column in colnames(DF_without_y)) {
       # useful for flextable presentation
@@ -151,9 +159,6 @@ table1 <- function(DF,
       }
    }
 
-   i <- 0
-
-
 
 
 
@@ -161,10 +166,18 @@ table1 <- function(DF,
    ########################################################
    ###        Loop for each characteristics (var)       ###
    ########################################################
-   for (var in DF_without_y) {
+   if (paired) {
+      DF_without_y_and_all <-  DF_without_y[,-match(strata,colnames(DF))]
+   } else {
+      DF_without_y_and_all <- DF_without_y
+   }
+
+   i <- 0
+
+   for (var in DF_without_y_and_all) {
       i <- i + 1
-      varname <- colnames(DF_without_y)[i]
-      progressbar(total = length(DF_without_y),i,variable = varname)
+      varname <- colnames(DF_without_y_and_all)[i]
+      progressbar(total = length(DF_without_y_and_all),i,variable = varname)
       ligne1 <- colnames_definitive[i]
 
       sign <- NULL # sign store a note if a special test is done (fischer, Wilcoxon...)
@@ -173,6 +186,7 @@ table1 <- function(DF,
       #----------------------------------------------------------#
       #--  if numeric  ------------------------------------------#
       #----------------------------------------------------------#
+
       if (is.numeric(var)) {
          if (exit == "html") {
             ligne2 <- "\t \t Mean (SD)"
@@ -181,7 +195,8 @@ table1 <- function(DF,
             ligne2 <- "      Mean (SD)"
             ligne3 <- "      Median [min - max]"
          }
-         #####  Descriptive calculs  #####
+
+         #####  DESCRIPTIVE CALCULS #####
          mean_vars <- aggregate(var ~ DF[, y], FUN = "mean")
          mean_overall <- round(mean(var,na.rm = TRUE), round)
          median_vars <- aggregate(var ~ DF[, y], FUN = "median")
@@ -194,14 +209,15 @@ table1 <- function(DF,
          max_overall <- round(max(var, na.rm = TRUE),round)
          length_vars <- aggregate(var ~ DF[, y], FUN = "length")
 
+         # Add overall results if overall
          if (overall) {
             ligne1 <- c(ligne1," ")
             ligne2 <- c(ligne2,paste0(mean_overall, " (", sd_overall,") "))
             ligne3 <- c(ligne3,paste0(median_overall," [",min_overall," - ",max_overall,"] "))
          }
 
+         # round and save all results
          for (j in 1:levels_y) {
-            # round and save all results
             mean_vars_level <- round(mean_vars[j, 2], round)
             sd_vars_level <- round(sd_vars[j, 2], round)
             median_vars_level <- round(median_vars[j, 2], round)
@@ -211,11 +227,12 @@ table1 <- function(DF,
             ligne2 <- c(ligne2,paste0(mean_vars_level, " (", sd_vars_level,") "))
             ligne3 <- c(ligne3,paste0(median_vars_level," [",min_vars_level," - ",max_vars_level,"] "))
          }
+         #####
 
+         ##### STATISTICAL TESTS #####
 
          ### if not paired ###
          if (tests & !paired) {
-            # Conditions then test
             verif <- TRUE
             ncst <- TRUE
             p <- "-"
@@ -257,33 +274,15 @@ table1 <- function(DF,
 
          ### if paired ###
          if (tests & paired) {
-            if (!is.vector(strata) & !(TRUE %in% (strata %in% colnames(DF)))) {
-               stop(' /!\ usable strata is not provided ')
-            }else{
-               if ( length(strata) < nrow(DF) ) {
-                  lenstrat <- length(strata)
-                  new_strata <- vector()
-                  for (index_i in seq(lenstrat)) {
-                     new_strata <- c(new_strata,DF[,strata[index_i]])
-                  }
-                  strata <- new_strata
-                  strata_col <- TRUE
-               }else{}
+            Strate <- vector()
+            var_strat <- vector()
+            y_strat <- vector()
+            for (strate_i in strata) {
+               Strate <-  c(Strate,DF[,strate_i])
+               var_strat <- c(var_strat,var)
+               y_strat <- c(y_strat,DF[,y])
             }
-
-            if (strata_col) {
-               new_element <- vector()
-               for (index_i in seq(lenstrat)) {
-                  new_element <- c(new_element,var)
-               }
-               element <- new_element
-            } else {
-               element <- var
-            }
-            p <- signif(t.test(element,strata,paired = TRUE)$p.value,3)
-            p <- ifelse(significance,p,ifelse(p < 0.0001,"< 0.0001",p))
-
-            ligne1 <- c(ligne1, p)
+            p <- survival::clogit(as.factor(y_strat-1)~as.numeric(var_strat)+strata(Strate))$p.value
          }
          ##
          else{
@@ -390,14 +389,20 @@ table1 <- function(DF,
                }
 
                ## if paired ##
-               if (paired) {
-                  if (length(levels(var)) == 2) {
-                     clig <- mcnemar.test(var,DF[,y])$p.value
+               if (paired & tests) {
+                     Strate = vector()
+                     var_strat <- vector()
+                     y_strat <- vector()
+                     for (strate_i in strata) {
+                        Strate <-  c(Strate,DF[,strate_i])
+                        var_strat <- c(var_strat,as.character(var))
+                        y_strat <- c(y_strat,DF[,y])
+                     }
+
+                     clig <- survival::clogit(as.factor(y_strat-1)~as.factor(var_strat)+strata(Strate))$p.value
                      clig <- signif(clig, 3)
                      clig <- ifelse(significance, clig,ifelse(clig < 0.0001,"< 0.0001",clig))
-                  } else {
-                     clig <- "-"
-                  }
+
                ## if not paired ##
                 }else {
                   # if verif ok chi2, else Fisher
@@ -488,6 +493,15 @@ table1 <- function(DF,
    rslt <- rslt[-1, ]
    ###
 
+   if ("excel" %in% exit)
+      xlsx::write.xlsx(
+         rslt,
+         paste0(name_sheet,".xlsx"),
+         sheetName = "name_sheet",
+         append = FALSE,
+         row.names = FALSE
+      )
+
    if ("html" %in% exit) {
       rslt <- as.data.frame(rslt[-1,])
       colsy <- vector()
@@ -534,6 +548,9 @@ table1 <- function(DF,
       rslt %>% align(j = 2:nb_colums,align = 'center',part = "header") -> rslt
    }
 
+
+
+   print(paste0('version : ',version_pkg))
    return(rslt)
 
 }
