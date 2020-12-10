@@ -47,12 +47,13 @@ table1 <- function(DF,
                    significance = F,
                    exit = 'html',
                    name_sheet = 'results',
-                   num_function = c('mean','SD','median',"quartile")
+                   num_function = "auto",
+                   available_data=TRUE
                    )
 {
 
 
-   version_pkg = '0.0.6'
+   version_pkg = '0.0.7'
 
    ##################################################
    #    Arguments verification / transformation     #
@@ -125,33 +126,26 @@ table1 <- function(DF,
    ##################################################
    tabf <- matrix(nrow = 1, ncol = levels_y + 2)
    first_column <- 1 #first column in the table with an ynames
-   if (tests) {
-      if (overall) {
-         tabf <- c("Characteristics", "Overall", ynames, "p-value")
-         ligne2 <- rep("", levels_y + 3)
-         first_column <- first_column + 1
-      }else {
-         tabf <- c("characteristics", ynames, "p-value")
-         ligne2 <- rep("", levels_y + 2)
-      }
-   } else {
-      if (overall) {
-         tabf <- c("characteristics", "overall", ynames)
-         ligne2 <- rep("","", levels_y + 2)
-         first_column <- first_column + 1
-      }else {
-         tabf <- c("characteristics", ynames)
-         ligne2 <- rep("", levels_y + 1)
-      }
-   }
+   tabf <- c("Characteristics")
+   if (available_data)
+      tabf <- c(tabf,"Available data")
+   if (overall)
+      tabf <- c(tabf,"Overall")
+   tabf <- c(tabf,ynames)
+   if (tests)
+      tabf <- c(tabf,'p-value')
+
+   first_column <- match(ynames[1],tabf)
+   ligne2 <- rep("", length(tabf))
+
 
    for (k in 1:levels_y) {
-      ligne2[k + first_column] <- paste0("N = ", table(DF[, y])[k]) #number of observations for each levels of y
+      ligne2[k + first_column -1] <- paste0("N = ", table(DF[, y])[k]) #number of observations for each levels of y
    }
    numbers_observation <- ligne2
    if (overall) {
       overall_observations <- sum(table(DF[, y]))
-      ligne2[2] <- paste0("N = ", overall_observations)
+      ligne2[first_column -1] <- paste0("N = ", overall_observations)
    }
    tabf <- rbind(tabf, ligne2)
    ##################################################
@@ -173,6 +167,7 @@ table1 <- function(DF,
    ########################################################
 
    i <- 0
+   one_ligne <- FALSE
    for (var in DF_without_y_and_all) {
       i <- i + 1
       varname <- colnames(DF_without_y_and_all)[i]
@@ -182,17 +177,25 @@ table1 <- function(DF,
       sign <- NULL # store a note if a special test is done (fischer, Wilcoxon...)
 
 
+      if (available_data) {
+         n_available <- sum(!is.na(var))
+      }
+
+
+
       #--------------------------------------------------------------------------------------------------------------------#
       #--  if numeric  ----------------------------------------------------------------------------------------------------#
       #--------------------------------------------------------------------------------------------------------------------#
 
       if (is.numeric(var)) {
 
+         ligne1 <- c(ligne1,n_available)
+
             # Legend
             if (length(num_function) < 3) {
-               ligne1 <- paste0(ligne1, ifelse("mean" %in% num_function," -  mean (SD)", paste0(" -  median ",ifelse("quartile" %in% num_function,"[Q1-Q3]","[min - max]"))))
                ligne2 <- NULL
                ligne3 <- NULL
+               one_ligne <- TRUE
             } else {
                   tabulation <- ifelse(exit == "html","\t \t ","      ")
                   tabulation <- ifelse(length(num_function) > 2,"",tabulation)
@@ -219,14 +222,24 @@ table1 <- function(DF,
          quartiles_vars <- aggregate(var ~ DF[, y], FUN = "quantile")
          quartiles_overall <- quantile(var, na.rm = TRUE)
          length_vars <- aggregate(var ~ DF[, y], FUN = "length")
+         shapiro_vars <- aggregate(var ~ DF[, y], FUN = "shapiro.test")
+         shapiro_overall <- shapiro.test(var)$p.value
+         normal <- TRUE
+         if ((shapiro_overall < 0.05) & overall)
+            normal <- FALSE
+         if (TRUE %in% (shapiro_vars[,2][,2] < 0.05))
+            normal <- FALSE
+
 
          # Add overall results if overall
          if (overall) {
-            if (length(num_function) < 3) {
-               ligne1 <- c(ligne1,ifelse("mean" %in% num_function,paste0(mean_overall, " (", sd_overall,") "), paste0(median_overall," [",ifelse("quartile" %in% num_function,round(quartiles_overall[2],round),min_overall)," - ",ifelse("quartile" %in% num_function,round(quartiles_overall[4],round),max_overall),"] ")))
+            if (length(num_function) < 3 & (num_function != "auto")) {
+               ligne1 <- c(ligne1,ifelse("mean" %in% num_function,paste0(mean_overall, " ± ",sd_overall), paste0(median_overall," [",ifelse("quartile" %in% num_function,round(quartiles_overall[2],round),min_overall)," - ",ifelse("quartile" %in% num_function,round(quartiles_overall[4],round),max_overall),"] ")))
+            } else if (num_function == "auto") {
+               ligne1 <- c(ligne1,ifelse(normal,paste0(mean_overall, " ± ",sd_overall), paste0(median_overall," [",round(quartiles_overall[2],round)," - ",round(quartiles_overall[4],round),"] ")))
             } else {
                ligne1 <- c(ligne1," ")
-               ligne2 <- c(ligne2,paste0(mean_overall, " (", sd_overall,") "))
+               ligne2 <- c(ligne2,paste0(mean_overall, " ± ",sd_overall))
                ligne3 <- c(ligne3,paste0(median_overall," [",ifelse("quartile" %in% num_function,round(quartiles_overall[2],round),min_overall)," - ",ifelse("quartile" %in% num_function,round(quartiles_overall[4],round),max_overall),"] "))
             }
          }
@@ -241,8 +254,11 @@ table1 <- function(DF,
             quartiles_vars_level <- quartiles_vars[j, 2]
             min_vars_level <- ifelse("quartile" %in% num_function,round(quartiles_vars_level[2],round),min_vars_level)
             max_vars_level <- ifelse("quartile" %in% num_function,round(quartiles_vars_level[4],round),max_vars_level)
-            if (length(num_function) < 3) {
+
+            if (length(num_function) < 3 & (num_function != "auto")) {
                ligne1 <- c(ligne1,ifelse("mean" %in% num_function,paste0(mean_vars_level, " (", sd_vars_level,") "), paste0(median_vars_level," [",min_vars_level," - ",max_vars_level,"] ")))
+            } else if (num_function == "auto") {
+               ligne1 <- c(ligne1,ifelse(normal,paste0(mean_vars_level, " ± ",sd_vars_level), paste0(median_vars_level," [",round(quartiles_vars_level[2],round)," - ",round(quartiles_vars_level[4],round),"] ")))
             } else{
                ligne1 <- c(ligne1," ")
                ligne2 <- c(ligne2,paste0(mean_vars_level, " (", sd_vars_level,") "))
@@ -379,7 +395,6 @@ table1 <- function(DF,
                }
             }
 
-
             tb <- table(DF[, y], var,useNA = "no")
             tbm <- margin.table(tb, 1)
 
@@ -446,7 +461,8 @@ table1 <- function(DF,
          ## Variable with 2 levels #############################
          if (length(levels(var)) == 2) {
 
-            ligne <- paste0(ligne1, " (", levels(var)[1], ") - no. (%)")
+
+            ligne <- c(paste0(ligne1, " (", levels(var)[1], ") - no. (%)"),n_available)
 
             if (overall) {
                overall_count <- addmargins(tb)[levels_y + 1,1]
@@ -467,11 +483,11 @@ table1 <- function(DF,
             ## Variable with more than 2 levels #############################
 
             # First line with only the test result
-            if (overall) {
-               ligne <- c(paste0(colnames_definitive[i], " - no. (%)"), rep(" ", levels_y + 1), paste0(clig, sign))
-            } else {
-               ligne <- c(paste0(colnames_definitive[i], " - no. (%)"), rep(" ", levels_y), paste0(clig, sign))
-            }
+            ligne <- paste0(colnames_definitive[i], " - no. (%)")
+            if (available_data)
+               ligne <- c(ligne,n_available)
+            ligne <- c(ligne, rep(" ", ifelse(overall,levels_y + 1,levels_y)), paste0(clig, sign))
+
             tabf <- rbind(tabf, ligne)
 
             # other lines
@@ -483,6 +499,8 @@ table1 <- function(DF,
                }else {
                   ligne <- paste0(" \t \t  ", levels(var)[n])
                }
+               if (available_data)
+                  ligne <- c(ligne," ")
 
                tb <- table(DF[, y], var,useNA = "no")
                tbm <- margin.table(tb, 1)
@@ -525,6 +543,8 @@ table1 <- function(DF,
       )
 
    if ("html" %in% exit) {
+      colnames_rslt <- colnames(rslt)
+      nb_colums <- length(rslt[1,])
       rslt <- as.data.frame(rslt[-1,])
       colsy <- vector()
       for (n in seq(ynames)) {
@@ -532,27 +552,17 @@ table1 <- function(DF,
          colsy[n] <- paste(ynames[n],numbers_observation[n + start_nb_observation],sep = "\n")
       }
 
-      if (overall) {
-         coloverall <- paste(overall_name,overall_observations,sep = "\nN = ")
-         definite_names <- c("characteristics",coloverall,colsy)
-
-      } else {
-         definite_names <- c("characteristics",colsy)
-      }
-      if (tests) {
-         definite_names <- c(definite_names,"p value")
-      }
-      colnames(rslt) <- definite_names
-
-      rslt <- flextable(rslt, col_keys = colnames(rslt))
-      text_footer <- ifelse(test = paired,"p-values have been obtained from paired t test for continuous variables and mac nemar test for categorical variables","p-values have been obtained from a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
+      rslt <- flextable(rslt, col_keys = colnames_rslt)
+      text_footer <- ""
+      text_footer <- "Data shown are number (%), and mean ± SD or median (25th – 75th percentiles) if not normally distributed \n"
+      text_footer <- paste0(text_footer,ifelse(test = paired,"p-values have been obtained from paired t test for continuous variables and mac nemar test for categorical variables","p-values have been obtained from a two-sided student test for continuous variables and from a khi-2 test for categorical variables, unless specified otherwise : \n
                          - a : Student test with Welch approximation
                          - b : Fisher's exact test
-                         - c : Wilcoxon test")
+                         - c : Wilcoxon test"))
       rslt <- add_footer(rslt, characteristics = text_footer)
       nb_colums <- ifelse(overall,levels_y + 1,levels_y)
       nb_colums <- ifelse(tests,nb_colums + 1,nb_colums)
-      rslt <- merge_at(rslt, j = 1:(nb_colums+1), part = "footer")
+      #rslt <- merge_at(rslt, j = 1:(nb_colums), part = "footer")
       rslt <- valign(rslt, valign = "bottom", part = "footer")
       if (title) {
          rslt <- add_header_lines(rslt,paste0("Table X. Patients baseline characteristics by study group ( ", colnames_prep(y,type = "presentation"),' )'))
