@@ -14,6 +14,12 @@
 #' @param norm_test booleen (optionnal) : TRUE if you want tests on normal distribution to be performed has condition to student test
 #' @param Khi2 booleen (optionnal) : if TRUE, khi2 is prefered to fisher
 #' @param exit character : 'html', 'console' or 'excel'
+#' @param paired
+#' @param strata
+#' @param method
+#' @param adjusted
+#' @param significance
+#' @param name_sheet
 #'
 #' @return dataframe, excel file or html table depending on the exit parameter
 #' @export
@@ -40,12 +46,13 @@ table1 <- function(DF,
                    round = 2,
                    significance = F,
                    exit = 'html',
-                   name_sheet = 'results'
+                   name_sheet = 'results',
+                   num_function = c('mean','SD','median',"quartile")
                    )
 {
 
 
-   version_pkg = '0.0.3'
+   version_pkg = '0.0.6'
 
    ##################################################
    #    Arguments verification / transformation     #
@@ -60,22 +67,19 @@ table1 <- function(DF,
       }
    } else stop("No dataframe has been provided. Make sure 'DF' is a dataframe, a tibble or a matrix")
 
+   ## y
    if (!is.character(y) || !(y %in% colnames(DF)))
       stop("y must be a character variable, part of DF")
+   DF[, y] <- as.factor(DF[, y])
 
-   DF[, y] <- as.factor(DF[[y]])
    levels_y <- length(levels(DF[, y]))
    DF_without_y <- DF[, -match(y, colnames(DF))]
 
-
-   if (is.null(ynames))
+   if (is.null(ynames)) {
       ynames <- levels(DF[, y])
-
-   if (!is.vector(ynames))
-      stop("ynames should be a vector of characters")
-
-   if (length(ynames) != length(levels(DF[, y])))
-      stop("ynames should be of as many labels than y levels")
+   } else if (!is.vector(ynames) | length(ynames) != levels_y) {
+      stop(paste0("ynames should be a vector of characters of length",levels_y))
+   }
 
    if (!is.logical(overall))
       stop("'overall' should be a booleen")
@@ -98,10 +102,16 @@ table1 <- function(DF,
       } else {
          colnames_definitive <- colnames(DF)[colnames(DF) != y]
       }
-   }
-   else {
+   } else {
       warning('"make.name" should be logical ; "make.name" is considered as False')
       colnames_definitive <- colnames(DF)
+   }
+
+   DF_without_y_and_all <- DF_without_y
+   if (paired & !is.null(strata)) {
+      for (colstrata in strata) {
+         DF_without_y_and_all <-  DF_without_y_and_all[,-match(colstrata,colnames(DF_without_y_and_all))]
+      }
    }
 
 
@@ -117,7 +127,7 @@ table1 <- function(DF,
    first_column <- 1 #first column in the table with an ynames
    if (tests) {
       if (overall) {
-         tabf <- c("characteristics", "overall", ynames, "p-value")
+         tabf <- c("Characteristics", "Overall", ynames, "p-value")
          ligne2 <- rep("", levels_y + 3)
          first_column <- first_column + 1
       }else {
@@ -146,12 +156,10 @@ table1 <- function(DF,
    tabf <- rbind(tabf, ligne2)
    ##################################################
 
-
+   # useful loop for flextable presentation
    i <- 0
    num_variables <- vector()
-
    for (column in colnames(DF_without_y)) {
-      # useful for flextable presentation
       i + 1 -> i
       if (is.numeric(DF_without_y[,column])) {
          num_variables <- c(num_variables,i)
@@ -160,40 +168,42 @@ table1 <- function(DF,
 
 
 
-
-
    ########################################################
    ###        Loop for each characteristics (var)       ###
    ########################################################
-   if (paired) {
-      DF_without_y_and_all <-  DF_without_y[,-match(strata,colnames(DF))]
-   } else {
-      DF_without_y_and_all <- DF_without_y
-   }
 
    i <- 0
-
    for (var in DF_without_y_and_all) {
       i <- i + 1
       varname <- colnames(DF_without_y_and_all)[i]
       progressbar(total = length(DF_without_y_and_all),i,variable = varname)
       ligne1 <- colnames_definitive[i]
 
-      sign <- NULL # sign store a note if a special test is done (fischer, Wilcoxon...)
+      sign <- NULL # store a note if a special test is done (fischer, Wilcoxon...)
 
 
-      #----------------------------------------------------------#
-      #--  if numeric  ------------------------------------------#
-      #----------------------------------------------------------#
+      #--------------------------------------------------------------------------------------------------------------------#
+      #--  if numeric  ----------------------------------------------------------------------------------------------------#
+      #--------------------------------------------------------------------------------------------------------------------#
 
       if (is.numeric(var)) {
-         if (exit == "html") {
-            ligne2 <- "\t \t Mean (SD)"
-            ligne3 <- "\t \t Median [min - max]"
-         } else {
-            ligne2 <- "      Mean (SD)"
-            ligne3 <- "      Median [min - max]"
-         }
+
+            # Legend
+            if (length(num_function) < 3) {
+               ligne1 <- paste0(ligne1, ifelse("mean" %in% num_function," -  mean (SD)", paste0(" -  median ",ifelse("quartile" %in% num_function,"[Q1-Q3]","[min - max]"))))
+               ligne2 <- NULL
+               ligne3 <- NULL
+            } else {
+                  tabulation <- ifelse(exit == "html","\t \t ","      ")
+                  tabulation <- ifelse(length(num_function) > 2,"",tabulation)
+                  median_bis <- ifelse("quartile" %in% num_function,"[Q1-Q3]","[min - max]")
+                  ligne2 <- ifelse(exit == "html","\t \t Mean (SD)","      Mean (SD)")
+                  ligne3 <- ifelse(exit == "html",paste0("\t \t Median ",median_bis),paste0("      Median ",median_bis))
+            }
+
+
+
+
 
          #####  DESCRIPTIVE CALCULS #####
          mean_vars <- aggregate(var ~ DF[, y], FUN = "mean")
@@ -206,13 +216,19 @@ table1 <- function(DF,
          min_overall <- round(min(var, na.rm = TRUE),round)
          max_vars <- aggregate(var ~ DF[, y], FUN = "max")
          max_overall <- round(max(var, na.rm = TRUE),round)
+         quartiles_vars <- aggregate(var ~ DF[, y], FUN = "quantile")
+         quartiles_overall <- quantile(var, na.rm = TRUE)
          length_vars <- aggregate(var ~ DF[, y], FUN = "length")
 
          # Add overall results if overall
          if (overall) {
-            ligne1 <- c(ligne1," ")
-            ligne2 <- c(ligne2,paste0(mean_overall, " (", sd_overall,") "))
-            ligne3 <- c(ligne3,paste0(median_overall," [",min_overall," - ",max_overall,"] "))
+            if (length(num_function) < 3) {
+               ligne1 <- c(ligne1,ifelse("mean" %in% num_function,paste0(mean_overall, " (", sd_overall,") "), paste0(median_overall," [",ifelse("quartile" %in% num_function,round(quartiles_overall[2],round),min_overall)," - ",ifelse("quartile" %in% num_function,round(quartiles_overall[4],round),max_overall),"] ")))
+            } else {
+               ligne1 <- c(ligne1," ")
+               ligne2 <- c(ligne2,paste0(mean_overall, " (", sd_overall,") "))
+               ligne3 <- c(ligne3,paste0(median_overall," [",ifelse("quartile" %in% num_function,round(quartiles_overall[2],round),min_overall)," - ",ifelse("quartile" %in% num_function,round(quartiles_overall[4],round),max_overall),"] "))
+            }
          }
 
          # round and save all results
@@ -222,9 +238,16 @@ table1 <- function(DF,
             median_vars_level <- round(median_vars[j, 2], round)
             min_vars_level <- round(min_vars[j, 2], round)
             max_vars_level <- round(max_vars[j, 2], round)
-            ligne1 <- c(ligne1," ")
-            ligne2 <- c(ligne2,paste0(mean_vars_level, " (", sd_vars_level,") "))
-            ligne3 <- c(ligne3,paste0(median_vars_level," [",min_vars_level," - ",max_vars_level,"] "))
+            quartiles_vars_level <- quartiles_vars[j, 2]
+            min_vars_level <- ifelse("quartile" %in% num_function,round(quartiles_vars_level[2],round),min_vars_level)
+            max_vars_level <- ifelse("quartile" %in% num_function,round(quartiles_vars_level[4],round),max_vars_level)
+            if (length(num_function) < 3) {
+               ligne1 <- c(ligne1,ifelse("mean" %in% num_function,paste0(mean_vars_level, " (", sd_vars_level,") "), paste0(median_vars_level," [",min_vars_level," - ",max_vars_level,"] ")))
+            } else{
+               ligne1 <- c(ligne1," ")
+               ligne2 <- c(ligne2,paste0(mean_vars_level, " (", sd_vars_level,") "))
+               ligne3 <- c(ligne3,paste0(median_vars_level," [",min_vars_level," - ",max_vars_level,"] "))
+            }
          }
          #####
 
@@ -299,9 +322,9 @@ table1 <- function(DF,
 
 
 
-      #----------------------------------------------------------#
-      #--  if non numeric  --------------------------------------#
-      #----------------------------------------------------------#
+      #--------------------------------------------------------------------------------------------------------------------#
+      #--  if non numeric  ------------------------------------------------------------------------------------------------#
+      #--------------------------------------------------------------------------------------------------------------------#
       else{
 
          #if a modality's lenght is > 40 characters, we shrink it to 40 characters to fit in the table
